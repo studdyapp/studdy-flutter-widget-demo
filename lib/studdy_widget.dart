@@ -65,46 +65,44 @@ class StuddyWidgetController {
   Function(Map<String, dynamic>)? onWidgetHidden;
   Function(Map<String, dynamic>)? onWidgetEnlarged;
   Function(Map<String, dynamic>)? onWidgetMinimized;
-
+  
+  // Add widget configuration properties
+  String? _widgetPosition;
+  int? _zIndex;
+  bool _displayOnAuth = false;
+  String? _targetLocale;
+  
   StuddyWidgetController({
-    String? widgetUrl,
     this.onAuthenticationResponse,
     this.onWidgetDisplayed,
     this.onWidgetHidden,
     this.onWidgetEnlarged,
     this.onWidgetMinimized,
+    String widgetUrl = 'https://storage.googleapis.com/studdy-widget-version0/dist/index.html',
   }) {
-    if (widgetUrl != null) {
-      _widgetUrl = widgetUrl;
-    }
-
-    controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.transparent)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (_) {
-            _logEvent('Widget loaded successfully');
-            _isInitialized = true;
-          },
-          onWebResourceError: (error) {
-            _logEvent('Error loading widget: ${error.description}');
-          },
-        ),
-      )
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..addJavaScriptChannel(
-        'StuddyWidgetChannel',
-        onMessageReceived: (JavaScriptMessage message) {
-          _logEvent('Message from widget: ${message.message}');
-          _handleWidgetMessage(message.message);
-        },
-      )
-      ..enableZoom(false)
-      ..loadRequest(Uri.parse(_widgetUrl));
+    _widgetUrl = widgetUrl;
   }
-
-  // Add handler for widget messages
+  
+  // Initialize the controller with the WebView
+  void initialize(WebViewController webViewController) {
+    controller = webViewController;
+    _isInitialized = true;
+    _setupMessageHandlers();
+  }
+  
+  // Set up handlers for messages from the widget
+  void _setupMessageHandlers() {
+    if (!_isInitialized) return;
+    
+    controller.addJavaScriptChannel(
+      'WidgetChannel',
+      onMessageReceived: (JavaScriptMessage message) {
+        _handleWidgetMessage(message.message);
+      },
+    );
+  }
+  
+  // Handle messages from widget
   void _handleWidgetMessage(String messageString) {
     try {
       final message = jsonDecode(messageString);
@@ -167,95 +165,115 @@ class StuddyWidgetController {
       window.postMessage($jsonMessage, '*');
     ''');
   }
-
-
-  // Auth methods matching integration implementation
-  Future<Map<String, dynamic>> authenticate(WidgetAuthRequest authRequest) {
+  
+  // Authenticate with the Studdy platform
+  Future<Map<String, dynamic>> authenticate(WidgetAuthRequest authRequest) async {
     _sendMessageToWidget('AUTHENTICATE', authRequest.toJson());
     _logEvent('Authentication sent');
-    return Future.value({'success': true});
-  }
-
-  // Set page data
-  Map<String, dynamic> setPageData(PageData pageData) {
-    _sendMessageToWidget('SET_PAGE_DATA', pageData.toJson());
-    _logEvent('Page data set');
     return {'success': true};
   }
-
-  // Show widget
+  
+  // Control widget display
   Map<String, dynamic> display() {
     _sendMessageToWidget('DISPLAY_WIDGET');
     _logEvent('Widget displayed');
     return {'success': true};
   }
-
-  // Hide widget
+  
   Map<String, dynamic> hide() {
     _sendMessageToWidget('HIDE_WIDGET');
     _logEvent('Widget hidden');
     return {'success': true};
   }
-
-  // Enlarge widget (open)
-  Map<String, dynamic> enlarge([String? screenOnShow]) {
-    _sendMessageToWidget('ENLARGE_WIDGET', {'screen': screenOnShow ?? 'solver'});
-    _logEvent('Widget enlarged to ${screenOnShow ?? "solver"} screen');
+  
+  Map<String, dynamic> enlarge([String? screen]) {
+    _sendMessageToWidget('ENLARGE_WIDGET', {'screen': screen ?? 'solver'});
+    _logEvent('Widget enlarged to ${screen ?? "solver"} screen');
     return {'success': true};
   }
-
-  // Minimize widget
+  
   Map<String, dynamic> minimize() {
     _sendMessageToWidget('MINIMIZE_WIDGET');
     _logEvent('Widget minimized');
     return {'success': true};
   }
-
-  // Set target locale
-  Map<String, dynamic> setTargetLocale(String targetLocale) {
-    _sendMessageToWidget('SET_TARGET_LOCALE', {'targetLocale': targetLocale});
-    _logEvent('Target locale set to $targetLocale');
-    return {'success': true};
-  }
-
-  // Set widget position
+  
+  // Configure widget
   Map<String, dynamic> setWidgetPosition(String position) {
-    if (position != 'right' && position != 'left') {
-      throw ArgumentError('Position must be either "right" or "left"');
-    }
-    
+    _widgetPosition = position;
     _sendMessageToWidget('SET_WIDGET_POSITION', {'position': position});
     _logEvent('Widget position set to $position');
     return {'success': true};
   }
-
-  // Set Z-Index directly through the iframe
+  
   Map<String, dynamic> setZIndex(int zIndex) {
-    _sendMessageToWidget('SET_ZINDEX', {'zIndex': zIndex});
-    _logEvent('Z-index set to $zIndex');
+    _zIndex = zIndex;
+    _sendMessageToWidget('SET_Z_INDEX', {'zIndex': zIndex});
+    _logEvent('Widget zIndex set to $zIndex');
+    return {'success': true};
+  }
+  
+  Map<String, dynamic> setTargetLocale(String locale) {
+    _targetLocale = locale;
+    _sendMessageToWidget('SET_TARGET_LOCALE', {'locale': locale});
+    _logEvent('Widget target locale set to $locale');
+    return {'success': true};
+  }
+  
+  Map<String, dynamic> setPageData(PageData pageData) {
+    _sendMessageToWidget('SET_PAGE_DATA', pageData.toJson());
+    _logEvent('Page data set');
     return {'success': true};
   }
 }
 
 // The actual widget implementation
-class StuddyWidget extends StatelessWidget {
+class StuddyWidget extends StatefulWidget {
   final StuddyWidgetController controller;
-  final double width;
-  final double height;
+  final double? width;
+  final double? height;
   
   const StuddyWidget({
     Key? key,
     required this.controller,
-    this.width = double.infinity,
-    this.height = double.infinity,
+    this.width,
+    this.height,
   }) : super(key: key);
+  
+  @override
+  _StuddyWidgetState createState() => _StuddyWidgetState();
+}
 
+class _StuddyWidgetState extends State<StuddyWidget> {
+  late WebViewController _webViewController;
+  
+  @override
+  void initState() {
+    super.initState();
+    _initializeWebView();
+  }
+  
+  Future<void> _initializeWebView() async {
+    _webViewController = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(Colors.transparent)
+      ..loadRequest(Uri.parse(widget.controller._widgetUrl))
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (String url) {
+            // Initialize controller when page is loaded
+            widget.controller.initialize(_webViewController);
+          },
+        ),
+      );
+  }
+  
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: width,
-      height: height,
-      child: WebViewWidget(controller: controller.controller),
+      width: widget.width,
+      height: widget.height,
+      child: WebViewWidget(controller: _webViewController),
     );
   }
 } 
