@@ -71,36 +71,9 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
       onWidgetMinimized: (_) => log('Widget minimized event received'),
     );
 
-    // Initialize with default data if on mobile
-    if (!kIsWeb) {
-      _initializeDefaultData();
-    }
+
   }
 
-  void _initializeDefaultData() {
-    final defaultPageData = PageData(
-      problems: [
-        {
-          'problemId': 'prob-123',
-          'referenceTitle': 'Algebra Problem',
-          'problemStatement': [
-            {
-              'text': 'Solve for x: 2x + 3 = 7',
-              'type': 'text'
-            }
-          ],
-          'metaData': {
-            'type': 'math',
-            'topic': 'algebra'
-          }
-        }
-      ],
-      targetLocale: 'en-US'
-    );
-    
-    widgetController.setPageData(defaultPageData);
-    log('Default page data set');
-  }
 
   void _authenticate() {
     final tenantIdController = TextEditingController(text: 'studdy');
@@ -132,6 +105,7 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
               ],
             ),
           ),
+          actionsAlignment: MainAxisAlignment.start,
           actions: [
             TextButton(
               child: const Text('Cancel'),
@@ -163,64 +137,202 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Studdy Widget Control Panel')),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            bottom: 200,
-            child: StuddyWidget(controller: widgetController),
+  void _setPageData() {
+    final problemJsonController = TextEditingController(text: jsonEncode([
+      {
+        'problemId': 'prob-123',
+        'referenceTitle': 'Algebra Problem',
+        'problemStatement': [
+          {
+            'text': 'Solve for x: 2x + 3 = 7',
+            'type': 'text'
+          }
+        ],
+        'metaData': {
+          'type': 'math',
+          'topic': 'algebra'
+        }
+      }
+    ]));
+    final localeController = TextEditingController(text: 'en-US');
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Set Page Data'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: problemJsonController,
+                  decoration: const InputDecoration(labelText: 'Problems JSON'),
+                  maxLines: 10,
+                ),
+                TextField(
+                  controller: localeController,
+                  decoration: const InputDecoration(labelText: 'Target Locale'),
+                ),
+              ],
+            ),
           ),
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              color: Colors.white,
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+          actionsAlignment: MainAxisAlignment.start,
+          actions: [
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            ElevatedButton(
+              child: const Text('Set Page Data'),
+              onPressed: () {
+                try {
+                  final problems = jsonDecode(problemJsonController.text) as List;
+                  final pageData = PageData(
+                    problems: List<Map<String, dynamic>>.from(problems),
+                    targetLocale: localeController.text,
+                  );
+                  widgetController.setPageData(pageData);
+                  log('Page data set');
+                  Navigator.of(context).pop();
+                } catch (e) {
+                  log('Error setting page data: $e');
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _setZIndex() {
+    final zIndexController = TextEditingController(text: '2000');
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Set Z-Index'),
+          content: TextField(
+            controller: zIndexController,
+            decoration: const InputDecoration(labelText: 'Z-Index Value'),
+            keyboardType: TextInputType.number,
+          ),
+          actionsAlignment: MainAxisAlignment.start,
+          actions: [
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            ElevatedButton(
+              child: const Text('Set Z-Index'),
+              onPressed: () {
+                try {
+                  final zIndex = int.parse(zIndexController.text);
+                  widgetController.setZIndex(zIndex);
+                  log('Z-Index set to $zIndex');
+                  Navigator.of(context).pop();
+                } catch (e) {
+                  log('Error setting Z-Index: $e');
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
+  Widget build(BuildContext context) {
+    // Check if the screen width indicates a mobile device (less than 600 pixels)
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
+    // Control panel widget to be reused in both layouts
+    Widget controlPanel = Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(16.0),
+      width: isMobile ? double.infinity : 300,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              child: Wrap(
+                spacing: 8.0,
+                runSpacing: 8.0,
+                alignment: WrapAlignment.start,
                 children: [
-                  Wrap(
-                    spacing: 8.0,
-                    runSpacing: 8.0,
-                    alignment: WrapAlignment.center,
-                    children: [
-                      ElevatedButton(
-                        onPressed: _authenticate,
-                        child: const Text('Authenticate'),
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-                      ),
-                      ElevatedButton(onPressed: () => widgetController.display(), child: const Text('Display')),
-                      ElevatedButton(onPressed: () => widgetController.hide(), child: const Text('Hide')),
-                      ElevatedButton(onPressed: () => widgetController.enlarge('solver'), child: const Text('Enlarge (Solver)')),
-                      ElevatedButton(onPressed: () => widgetController.enlarge('tutor'), child: const Text('Enlarge (Tutor)')),
-                      ElevatedButton(onPressed: () => widgetController.minimize(), child: const Text('Minimize')),
-                      ElevatedButton(onPressed: () => widgetController.setWidgetPosition('right'), child: const Text('Position Right')),
-                      ElevatedButton(onPressed: () => widgetController.setWidgetPosition('left'), child: const Text('Position Left')),
-                      ElevatedButton(onPressed: () => widgetController.setZIndex(2000), child: const Text('Set zIndex: 2000')),
-                    ],
+                  ElevatedButton(
+                    onPressed: _authenticate,
+                    child: const Text('Authenticate'),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
                   ),
-                  const SizedBox(height: 16),
-                  Container(
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                    padding: const EdgeInsets.all(8.0),
-                    child: SingleChildScrollView(
-                      child: Text(consoleOutput, style: const TextStyle(fontSize: 12)),
-                    ),
+                  ElevatedButton(onPressed: () => widgetController.display(), child: const Text('Display')),
+                  ElevatedButton(onPressed: () => widgetController.hide(), child: const Text('Hide')),
+                  ElevatedButton(onPressed: () => widgetController.enlarge('solver'), child: const Text('Enlarge (Solver)')),
+                  ElevatedButton(onPressed: () => widgetController.enlarge('tutor'), child: const Text('Enlarge (Tutor)')),
+                  ElevatedButton(onPressed: () => widgetController.minimize(), child: const Text('Minimize')),
+                  ElevatedButton(onPressed: () => widgetController.setWidgetPosition('right'), child: const Text('Position Right')),
+                  ElevatedButton(onPressed: () => widgetController.setWidgetPosition('left'), child: const Text('Position Left')),
+                  ElevatedButton(
+                    onPressed: _setZIndex,
+                    child: const Text('Set Z-Index'),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                  ),
+                  ElevatedButton(
+                    onPressed: _setPageData,
+                    child: const Text('Set Page Data'),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
                   ),
                 ],
               ),
             ),
           ),
+          const SizedBox(height: 16),
+          Container(
+            height: isMobile ? 100 : 200, // Smaller console on mobile
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(8.0),
+            ),
+            padding: const EdgeInsets.all(8.0),
+            child: SingleChildScrollView(
+              child: Text(consoleOutput, style: const TextStyle(fontSize: 12)),
+            ),
+          ),
         ],
       ),
+    );
+
+    // Widget display area
+    Widget displayArea = Expanded(
+      child: StuddyWidget(controller: widgetController),
+    );
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Studdy Widget Control Panel')),
+      body: isMobile
+          ? Column(
+              children: [
+                // Top widget display area for mobile
+                displayArea,
+                // Bottom control panel for mobile (height constrained)
+                SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.4, // 40% of screen height
+                  child: controlPanel,
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                // Left side control panel for web
+                controlPanel,
+                // Right side widget display area for web
+                displayArea,
+              ],
+            ),
     );
   }
 }
