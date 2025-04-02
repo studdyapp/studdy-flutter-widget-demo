@@ -98,12 +98,71 @@ class StuddyWidgetController {
 
   void _setupMessageHandlers() {
     if (!_isInitialized) return;
+    
+    // Add a global window message listener
+    html.window.addEventListener('message', (html.Event event) {
+      final html.MessageEvent messageEvent = event as html.MessageEvent;
+      
+      // Check if this is a message from our widget
+      if (_iframe != null && messageEvent.source != _iframe!.contentWindow) {
+        return; // Ignore messages not from our iframe
+      }
+      
+      try {
+        final message = messageEvent.data;
+        final String type = message['type'] ?? '';
+        final dynamic payload = message['payload'];
+        
+        print('DIRECT! Message received from widget: type=$type');
+        
+        // Process the message directly
+        switch (type) {
+          case 'AUTHENTICATION_RESPONSE':
+            if (onAuthenticationResponse != null) onAuthenticationResponse!(payload);
+            break;
+          case 'WIDGET_DISPLAYED':
+            if (onWidgetDisplayed != null) onWidgetDisplayed!(payload ?? {});
+            break;
+          case 'WIDGET_HIDDEN':
+            if (onWidgetHidden != null) onWidgetHidden!(payload ?? {});
+            break;
+          case 'WIDGET_ENLARGED':
+            if (onWidgetEnlarged != null) onWidgetEnlarged!(payload ?? {});
+            break;
+          case 'WIDGET_MINIMIZED':
+            print('EUREUKA! Minimized widget');
+            if (onWidgetMinimized != null) onWidgetMinimized!(payload ?? {});
+            break;
+          default:
+            _logEvent('Unknown message type: $type');
+        }
+      } catch (e) {
+        _logEvent('Error processing message: $e');
+      }
+    });
+    
+    // Original JavaScript channel setup
     controller.addJavaScriptChannel(
       'WidgetChannel',
       onMessageReceived: (JavaScriptMessage message) {
+        print('JS CHANNEL: Message received: ${message.message}');
         _handleWidgetMessage(message.message);
       },
     );
+    
+    // Add JavaScript to forward window messages to our channel
+    controller.runJavaScript('''
+      window.addEventListener('message', function(event) {
+        console.log('WIDGET RECEIVED A MESSAGE HOLY FUCK:', JSON.stringify(event.data));
+        try {
+          if (event.data && event.data.type) {
+            window.WidgetChannel.postMessage(JSON.stringify(event.data));
+          }
+        } catch(e) {
+          console.error('Error forwarding message:', e);
+        }
+      });
+    ''');
   }
 
   void _handleWidgetMessage(String messageString) {
@@ -111,7 +170,7 @@ class StuddyWidgetController {
       final message = jsonDecode(messageString);
       final String type = message['type'] ?? '';
       final dynamic payload = message['payload'];
-      print('Receiving a message....');
+      print('EUREUKA! Receiving a message via JS channel, type: $type');
 
       // Debounce logic - ignore repeated messages of same type within debounce time
       final now = DateTime.now();
@@ -141,6 +200,7 @@ class StuddyWidgetController {
           if (onWidgetEnlarged != null) onWidgetEnlarged!(payload ?? {});
           break;
         case 'WIDGET_MINIMIZED':
+          print('EUREUKA! Minimized widget');
           if (onWidgetMinimized != null) onWidgetMinimized!(payload ?? {});
           break;
         default:
@@ -169,11 +229,26 @@ class StuddyWidgetController {
     final String jsonMessage = jsonEncode(message);
     
     if (kIsWeb && _iframe != null) {
-      // Direct approach - use the iframe reference we already have
-      _iframe!.contentWindow?.postMessage(message, '*');
-      _logEvent('Message sent directly to iframe: $type');
+      try {
+        // Direct approach - use the iframe reference we already have
+        print('SENDING DIRECTLY: Message to iframe: $type');
+        _iframe!.contentWindow?.postMessage(message, '*');
+        _logEvent('Message sent directly to iframe: $type');
+      } catch (e) {
+        print('ERROR sending direct message: $e');
+      }
     } else {
-      controller.runJavaScript('''window.postMessage($jsonMessage, '*');''');
+      print('SENDING VIA JS: Message to WebView: $type');
+      // Use JavaScript to send the message via window.postMessage
+      controller.runJavaScript('''
+        try {
+          const message = $jsonMessage;
+          console.log('Sending message from Flutter:', message);
+          window.postMessage(message, '*');
+        } catch(e) {
+          console.error('Error posting message:', e);
+        }
+      ''');
     }
   }
 
@@ -257,6 +332,12 @@ class StuddyWidget extends StatefulWidget {
 
 class _StuddyWidgetState extends State<StuddyWidget> {
   late final String viewId;
+  // Add constants for widget dimensions
+  static const String MINIMIZED_WIDGET_WIDTH = '80px';
+  static const String MINIMIZED_WIDGET_HEIGHT = '80px';
+  static const String ENLARGED_WIDGET_WIDTH = '90vw';
+  static const String ENLARGED_WIDGET_HEIGHT = '90vh';
+  static const String WIDGET_OFFSET = '20px';
   
   @override
   void initState() {
@@ -288,6 +369,63 @@ class _StuddyWidgetState extends State<StuddyWidget> {
           debugPrint('StuddyWidget: iframe loaded');
           widget.controller._isInitialized = true;
           widget.controller._iframe = iframe;
+          
+          // Set up direct message listeners for iframe style adjustments
+          html.window.addEventListener('message', (html.Event event) {
+            final html.MessageEvent messageEvent = event as html.MessageEvent;
+            
+            try {
+              print('IFRAME STYLE: Message received from widget iframe');
+              final message = messageEvent.data;
+              final String type = message['type'] ?? '';
+              
+              switch (type) {
+                case 'WIDGET_MINIMIZED':
+                  print('IFRAME STYLE: Minimizing widget iframe');
+                  iframe.style.width = MINIMIZED_WIDGET_WIDTH;
+                  iframe.style.height = MINIMIZED_WIDGET_HEIGHT;
+                  break;
+                  
+                case 'WIDGET_ENLARGED':
+                  print('IFRAME STYLE: Enlarging widget iframe');
+                  iframe.style.width = ENLARGED_WIDGET_WIDTH;
+                  iframe.style.height = ENLARGED_WIDGET_HEIGHT;
+                  break;
+                  
+                case 'WIDGET_DISPLAYED':
+                  print('IFRAME STYLE: Displaying widget iframe');
+                  iframe.style.display = 'block';
+                  break;
+                  
+                case 'WIDGET_HIDDEN':
+                  print('IFRAME STYLE: Hiding widget iframe');
+                  iframe.style.display = 'none';
+                  break;
+                
+                case 'AUTHENTICATION_RESPONSE':
+                  print('IFRAME STYLE: Auth response received, adjusting styles');
+                  final payload = message['payload'];
+                  if (payload != null && payload['publicConfigData'] != null) {
+                    final config = payload['publicConfigData'];
+                    if (config['defaultZIndex'] != null) {
+                      iframe.style.zIndex = config['defaultZIndex'].toString();
+                    }
+                    
+                    if (config['defaultWidgetPosition'] != null) {
+                      iframe.style.left = config['defaultWidgetPosition'] == 'left' ? WIDGET_OFFSET : 'auto';
+                      iframe.style.right = config['defaultWidgetPosition'] == 'right' ? WIDGET_OFFSET : 'auto';
+                    }
+                    
+                    if (config['displayOnAuth'] == true) {
+                      iframe.style.display = 'block';
+                    }
+                  }
+                  break;
+              }
+            } catch (e) {
+              debugPrint('StuddyWidget: Error processing message for iframe style: $e');
+            }
+          });
         });
         
         // Add a resize listener to maintain widget state

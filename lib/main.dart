@@ -58,6 +58,7 @@ class StuddyWidgetControlPanel extends StatefulWidget {
 class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
   late final StuddyWidgetController widgetController;
   String consoleOutput = '';
+  String widgetUrl = 'https://pr-468-widget.dev.studdy.ai';
 
   @override
   void initState() {
@@ -69,6 +70,7 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
       onWidgetHidden: (_) => log('Widget hidden event received'),
       onWidgetEnlarged: (_) => log('Widget enlarged event received'),
       onWidgetMinimized: (_) => log('Widget minimized event received'),
+      widgetUrl: widgetUrl,
     );
   }
 
@@ -240,6 +242,49 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
     );
   }
 
+  void _setWidgetUrl() {
+    final urlController = TextEditingController(text: widgetUrl);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Set Widget URL'),
+          content: TextField(
+            controller: urlController,
+            decoration: const InputDecoration(labelText: 'Widget URL'),
+          ),
+          actionsAlignment: MainAxisAlignment.start,
+          actions: [
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            ElevatedButton(
+              child: const Text('Set URL'),
+              onPressed: () {
+                setState(() {
+                  widgetUrl = urlController.text;
+                  // Recreate the controller with the new URL
+                  widgetController = StuddyWidgetController(
+                    onAuthenticationResponse: (response) => log('Authentication response received: ${json.encode(response)}'),
+                    onWidgetDisplayed: (_) => log('Widget displayed event received'),
+                    onWidgetHidden: (_) => log('Widget hidden event received'),
+                    onWidgetEnlarged: (_) => log('Widget enlarged event received'),
+                    onWidgetMinimized: (_) => log('Widget minimized event received'),
+                    widgetUrl: widgetUrl,
+                  );
+                });
+                log('Widget URL set to $widgetUrl');
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget build(BuildContext context) {
     // Check if the screen width indicates a mobile device (less than 600 pixels)
     final isMobile = MediaQuery.of(context).size.width < 600;
@@ -259,6 +304,11 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
                 runSpacing: 8.0,
                 alignment: WrapAlignment.start,
                 children: [
+                  ElevatedButton(
+                    onPressed: _setWidgetUrl,
+                    child: const Text('Set Widget URL'),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.purple, foregroundColor: Colors.white),
+                  ),
                   ElevatedButton(
                     onPressed: _authenticate,
                     child: const Text('Authenticate'),
