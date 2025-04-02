@@ -70,10 +70,7 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
       onWidgetEnlarged: (_) => log('Widget enlarged event received'),
       onWidgetMinimized: (_) => log('Widget minimized event received'),
     );
-
-
   }
-
 
   void _authenticate() {
     final tenantIdController = TextEditingController(text: 'studdy');
@@ -136,7 +133,6 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
     print('StuddyWidget: $message');
   }
 
-  @override
   void _setPageData() {
     final problemJsonController = TextEditingController(text: jsonEncode([
       {
@@ -243,7 +239,6 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
       },
     );
   }
-
 
   Widget build(BuildContext context) {
     // Check if the screen width indicates a mobile device (less than 600 pixels)

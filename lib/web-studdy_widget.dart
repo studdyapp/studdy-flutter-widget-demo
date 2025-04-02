@@ -5,8 +5,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:webview_flutter_web/webview_flutter_web.dart';
 import 'dart:async';
 
+// Replace dart:ui with dart:ui_web for platformViewRegistry
 // ignore: avoid_web_libraries_in_flutter
-import 'dart:ui' as ui; // for platformViewRegistry on web
+import 'dart:ui_web' as ui_web;
 
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html; // for iframe
@@ -179,6 +180,7 @@ class StuddyWidgetController {
 
   Future<Map<String, dynamic>> authenticate(WidgetAuthRequest authRequest) async {
     final jsonRequest = jsonEncode(authRequest.toJson());
+    print('type of jsonRequest: ${jsonRequest.runtimeType}');
     _logEvent('Starting authentication with payload: $jsonRequest');
     _sendMessageToWidget('AUTHENTICATE', authRequest.toJson());
     _logEvent('Authentication message sent, waiting for response...');
@@ -254,34 +256,57 @@ class StuddyWidget extends StatefulWidget {
 }
 
 class _StuddyWidgetState extends State<StuddyWidget> {
+  late final String viewId;
+  
+  @override
+  void initState() {
+    super.initState();
+    // Create a stable viewId that doesn't change on rebuilds
+    viewId = 'studdy-widget-${DateTime.now().millisecondsSinceEpoch}';
+    
+    if (kIsWeb) {
+      // Register the view factory only once during initState
+      _registerViewFactory();
+    }
+  }
+  
+  void _registerViewFactory() {
+    ui_web.platformViewRegistry.registerViewFactory(
+      viewId,
+      (int viewId) {
+        final iframe = html.IFrameElement()
+          ..src = widget.controller._widgetUrl
+          ..style.border = 'none'
+          ..style.position = 'absolute'
+          ..style.bottom = '20px'
+          ..style.right = '20px'
+          ..style.width = '${widget.width ?? 400}px'
+          ..style.height = '${widget.height ?? 600}px';
+        
+        // Mark controller as initialized on iframe load
+        iframe.onLoad.listen((_) {
+          debugPrint('StuddyWidget: iframe loaded');
+          widget.controller._isInitialized = true;
+          widget.controller._iframe = iframe;
+        });
+        
+        // Add a resize listener to maintain widget state
+        html.window.onResize.listen((_) {
+          // Only update necessary styles, don't recreate the iframe
+          if (widget.controller._isInitialized && widget.controller._iframe != null) {
+            iframe.style.width = '${widget.width ?? 400}px';
+            iframe.style.height = '${widget.height ?? 600}px';
+          }
+        });
+        
+        return iframe;
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (kIsWeb) {
-      final String viewId = 'studdy-widget-${UniqueKey().toString()}';
-      
-      ui.platformViewRegistry.registerViewFactory(
-        viewId,
-        (int viewId) {
-          final iframe = html.IFrameElement()
-            ..src = widget.controller._widgetUrl
-            ..style.border = 'none'
-            ..style.position = 'absolute'
-            ..style.bottom = '20px'
-            ..style.right = '20px'
-            ..style.width = '${widget.width ?? 400}px'
-            ..style.height = '${widget.height ?? 600}px';
-          
-          // Mark controller as initialized on iframe load
-          iframe.onLoad.listen((_) {
-            debugPrint('StuddyWidget: iframe loaded');
-            widget.controller._isInitialized = true;
-            widget.controller._iframe = iframe;
-          });
-          
-          return iframe;
-        },
-      );
-
       return HtmlElementView(viewType: viewId);
     } else {
       final mobileController = WebViewController();
