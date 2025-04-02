@@ -55,7 +55,7 @@ class PageData {
 class StuddyWidgetController {
   late WebViewController controller;
   bool _isInitialized = false;
-  String _widgetUrl = 'https://storage.googleapis.com/studdy-widget-version0/dist3/index.html';
+  String _widgetUrl = 'https://pr-468-widget.dev.studdy.ai';
   html.IFrameElement? _iframe;
 
   Function(Map<String, dynamic>)? onAuthenticationResponse;
@@ -79,7 +79,7 @@ class StuddyWidgetController {
     this.onWidgetHidden,
     this.onWidgetEnlarged,
     this.onWidgetMinimized,
-    String widgetUrl = 'https://storage.googleapis.com/studdy-widget-version0/dist3/index.html',
+    String widgetUrl = 'https://pr-468-widget.dev.studdy.ai',
   }) {
     _widgetUrl = widgetUrl;
   }
