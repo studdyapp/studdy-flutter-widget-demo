@@ -76,14 +76,6 @@ class StuddyWidgetController {
   Function(Map<String, dynamic>)? onWidgetEnlarged;
   Function(Map<String, dynamic>)? onWidgetMinimized;
 
-  String? _widgetPosition;
-  int? _zIndex;
-  bool _displayOnAuth = false;
-  String? _targetLocale;
-
-  DateTime? _lastMessageTime;
-  String? _lastMessageType;
-  static const _debounceTimeMs = 500; // Minimum time between same message types
 
   static Map<String, dynamic>? _latestAuthResponse;
   static final _authResponseNotifier = StreamController<Map<String, dynamic>>.broadcast();
@@ -131,7 +123,6 @@ class StuddyWidgetController {
     if (kIsWeb && _iframe != null) {
       try {
         // Direct approach - use the iframe reference we already have
-        print('SENDING DIRECTLY: Message to iframe: $type');
         _iframe!.contentWindow?.postMessage(message, '*');
         _logEvent('Message sent directly to iframe: $type');
       } catch (e) {
@@ -155,7 +146,6 @@ class StuddyWidgetController {
         html.window.removeEventListener('message', authListener);
         final payload = Map<String, dynamic>.from(data['payload'] as Map);
         if (payload['publicConfigData']['defaultZIndex'] != null) {
-          print('Default Z Index: ${payload['publicConfigData']['defaultZIndex']}');
           _iframe!.style.zIndex = payload['publicConfigData']['defaultZIndex'].toString();
         }
         
@@ -164,7 +154,6 @@ class StuddyWidgetController {
           _iframe!.style.right = payload['publicConfigData']['defaultWidgetPosition'] == 'right' ? WIDGET_OFFSET : 'auto';
         }
         if (payload['publicConfigData']['displayOnAuth'] == true) {
-          print('Display on auth: ${payload['publicConfigData']['displayOnAuth']}');
           _iframe!.style.display = 'block';
         }
 
@@ -241,7 +230,6 @@ class StuddyWidgetController {
   }
 
   Map<String, dynamic> setWidgetPosition(String position) {
-    _widgetPosition = position;
     _sendMessageToWidget('SET_WIDGET_POSITION', {'position': position});
     _logEvent('Widget position set to $position');
     if (_iframe != null) {
@@ -262,7 +250,6 @@ class StuddyWidgetController {
   }
 
   Map<String, dynamic> setTargetLocale(String locale) {
-    _targetLocale = locale;
     _sendMessageToWidget('SET_TARGET_LOCALE', {'locale': locale});
     _logEvent('Widget target locale set to $locale');
     return {'success': true};
@@ -345,7 +332,6 @@ class _StuddyWidgetState extends State<StuddyWidget> {
             final html.MessageEvent messageEvent = event as html.MessageEvent;
             
             try {
-              print('IFRAME STYLE: Message received from widget iframe: ${messageEvent.data}');
               final message = messageEvent.data;
               final String type = message['type'] ?? '';
               

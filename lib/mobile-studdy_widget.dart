@@ -53,20 +53,9 @@ class PageData {
   }
 }
 
-// Move constants from _StuddyWidgetState to class-level constants for access by the controller
-const String WIDGET_MAX_HEIGHT = '95%';
-const String WIDGET_MAX_WIDTH = '60%';
-const String MINIMIZED_WIDGET_HEIGHT = '120px';
-const String MINIMIZED_WIDGET_WIDTH = '120px';
-const String ENLARGED_WIDGET_HEIGHT = '95%';
-const String ENLARGED_WIDGET_WIDTH = '464px';
-const String WIDGET_OFFSET = '10px';
 const int DEFAULT_ZINDEX = 9999;
 const String DEFAULT_POSITION = 'right';
 
-// For mobile translation (percentage values need to be converted to explicit dimensions)
-const double DEFAULT_WIDTH = 400.0;
-const double DEFAULT_HEIGHT = 600.0;
 
 // Widget class that can be used to control the StuddyWidget
 class StuddyWidgetController {
@@ -283,11 +272,13 @@ class StuddyWidget extends StatefulWidget {
 class _StuddyWidgetState extends State<StuddyWidget> {
   late WebViewController _webViewController;
   
-  // Define numeric constants for mobile dimensions
-  static const double MINIMIZED_WIDTH = 120.0; // Use 120 to match web version
+  // VARIABLES FOR ADJUSTING SIZING
+  static const double MINIMIZED_WIDTH = 120.0;
   static const double MINIMIZED_HEIGHT = 120.0;
-  static const double ENLARGED_WIDTH_PERCENTAGE = 0.9;
-  static const double ENLARGED_HEIGHT_PERCENTAGE = 0.9;
+  static const double ENLARGED_WIDTH_PERCENTAGE = 0.7;
+  static const double ENLARGED_HEIGHT_PERCENTAGE = 2.4;
+  static const double DEFAULT_WIDTH = 400.0;
+  static const double DEFAULT_HEIGHT = 600.0;
   
   // State variables
   bool _isVisible = true;
