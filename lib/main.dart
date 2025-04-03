@@ -58,18 +58,18 @@ class StuddyWidgetControlPanel extends StatefulWidget {
 class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
   late final StuddyWidgetController widgetController;
   String consoleOutput = '';
-  String widgetUrl = 'https://pr-468-widget.dev.studdy.ai';
+  String widgetUrl = 'https://pr-476-widget.dev.studdy.ai';
 
   @override
   void initState() {
     super.initState();
 
     widgetController = StuddyWidgetController(
-      onAuthenticationResponse: (response) => log('Authentication response received: ${json.encode(response)}'),
-      onWidgetDisplayed: (_) => log('Widget displayed event received'),
-      onWidgetHidden: (_) => log('Widget hidden event received'),
-      onWidgetEnlarged: (_) => log('Widget enlarged event received'),
-      onWidgetMinimized: (_) => log('Widget minimized event received'),
+      onAuthenticationResponse: (response) => log('MAIN.dart: Authentication response received: ${json.encode(response)}'),
+      onWidgetDisplayed: (_) => log('MAIN.dart: Widget displayed event received'),
+      onWidgetHidden: (_) => log('MAIN.dart: Widget hidden event received'),
+      onWidgetEnlarged: (_) => log('MAIN.dart: Widget enlarged event received'),
+      onWidgetMinimized: (_) => log('MAIN.dart: Widget minimized event received'),
       widgetUrl: widgetUrl,
     );
   }
@@ -267,11 +267,11 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
                   widgetUrl = urlController.text;
                   // Recreate the controller with the new URL
                   widgetController = StuddyWidgetController(
-                    onAuthenticationResponse: (response) => log('Authentication response received: ${json.encode(response)}'),
-                    onWidgetDisplayed: (_) => log('Widget displayed event received'),
-                    onWidgetHidden: (_) => log('Widget hidden event received'),
-                    onWidgetEnlarged: (_) => log('Widget enlarged event received'),
-                    onWidgetMinimized: (_) => log('Widget minimized event received'),
+                    onAuthenticationResponse: (response) => log('MAIN.dart: Authentication response received: ${json.encode(response)}'),
+                    onWidgetDisplayed: (_) => log('MAIN.dart: Widget displayed event received'),
+                    onWidgetHidden: (_) => log('MAIN.dart: Widget hidden event received'),
+                    onWidgetEnlarged: (_) => log('MAIN.dart: Widget enlarged event received'),
+                    onWidgetMinimized: (_) => log('MAIN.dart: Widget minimized event received'),
                     widgetUrl: widgetUrl,
                   );
                 });

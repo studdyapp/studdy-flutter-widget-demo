@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'dart:convert';
+import 'dart:async';
 
 class WidgetAuthRequest {
   final String tenantId;
@@ -52,24 +53,47 @@ class PageData {
   }
 }
 
+// Move constants from _StuddyWidgetState to class-level constants for access by the controller
+const String WIDGET_MAX_HEIGHT = '95%';
+const String WIDGET_MAX_WIDTH = '60%';
+const String MINIMIZED_WIDGET_HEIGHT = '120px';
+const String MINIMIZED_WIDGET_WIDTH = '120px';
+const String ENLARGED_WIDGET_HEIGHT = '95%';
+const String ENLARGED_WIDGET_WIDTH = '464px';
+const String WIDGET_OFFSET = '10px';
+const int DEFAULT_ZINDEX = 9999;
+const String DEFAULT_POSITION = 'right';
+
+// For mobile translation (percentage values need to be converted to explicit dimensions)
+const double DEFAULT_WIDTH = 400.0;
+const double DEFAULT_HEIGHT = 600.0;
+
 // Widget class that can be used to control the StuddyWidget
 class StuddyWidgetController {
   late WebViewController controller;
   bool _isInitialized = false;
-  String _widgetUrl = 'https://pr-468-widget.dev.studdy.ai';
+  String _widgetUrl = 'https://pr-476-widget.dev.studdy.ai';
   
-  // Add message handler callbacks
+  // Message handler callbacks
   Function(Map<String, dynamic>)? onAuthenticationResponse;
   Function(Map<String, dynamic>)? onWidgetDisplayed;
   Function(Map<String, dynamic>)? onWidgetHidden;
   Function(Map<String, dynamic>)? onWidgetEnlarged;
   Function(Map<String, dynamic>)? onWidgetMinimized;
   
-  // Add widget configuration properties
+  // Widget configuration properties
   String? _widgetPosition;
   int? _zIndex;
   bool _displayOnAuth = false;
   String? _targetLocale;
+  
+  // Debounce variables 
+  DateTime? _lastMessageTime;
+  String? _lastMessageType;
+  static const _debounceTimeMs = 500;
+  
+  // Add this field to the StuddyWidgetController class
+  Completer<Map<String, dynamic>>? _lastAuthCompleter;
   
   StuddyWidgetController({
     this.onAuthenticationResponse,
@@ -77,7 +101,7 @@ class StuddyWidgetController {
     this.onWidgetHidden,
     this.onWidgetEnlarged,
     this.onWidgetMinimized,
-    String widgetUrl = 'https://pr-468-widget.dev.studdy.ai',
+    String widgetUrl = 'https://pr-476-widget.dev.studdy.ai',
   }) {
     _widgetUrl = widgetUrl;
   }
@@ -96,99 +120,138 @@ class StuddyWidgetController {
     controller.addJavaScriptChannel(
       'WidgetChannel',
       onMessageReceived: (JavaScriptMessage message) {
-        print('MOBILE JS CHANNEL: Message received: ${message.message}');
-        // Note: Message handling is now done in the _StuddyWidgetState class
+        _handleWidgetMessage(message.message);
       },
     );
     
-    // Inject JavaScript to intercept window.postMessage calls
+    // Add a message interceptor channel for direct logging
+    controller.addJavaScriptChannel(
+      'DirectInterceptor',
+      onMessageReceived: (JavaScriptMessage message) {
+        debugPrint('I RECEIVED A MESSAGE: ${message.message}');
+      },
+    );
+    
+    // Keep this message queueing system as it's helping with authentication responses
     controller.runJavaScript('''
       (function() {
-        console.log('Preparing to set up message listener...');
-        
-        // Wait a short time to ensure the channel is registered
-        setTimeout(function() {
-          console.log('Setting up message listener on WebView');
-          
-          // Check if channel exists before adding listener
-          if (typeof window.WidgetChannel !== 'undefined') {
-            console.log('WidgetChannel is available!');
-          } else {
-            console.error('WidgetChannel is NOT available yet!');
-          }
-          
-          // Function to safely post a message to Flutter
-          window.safePostToFlutter = function(data) {
-            try {
-              if (window.WidgetChannel && typeof window.WidgetChannel.postMessage === 'function') {
-                const jsonString = JSON.stringify(data);
-                window.WidgetChannel.postMessage(jsonString);
-                return true;
-              } else {
-                console.log('WidgetChannel not available, storing message for later');
-                // Store for later delivery
-                if (!window._pendingMessages) window._pendingMessages = [];
-                window._pendingMessages.push(data);
-                return false;
-              }
-            } catch(e) {
-              console.error('Error in safePostToFlutter:', e);
+        // Function to safely post a message to Flutter
+        window.safePostToFlutter = function(data) {
+          try {
+            if (window.WidgetChannel && typeof window.WidgetChannel.postMessage === 'function') {
+              const jsonString = JSON.stringify(data);
+              window.WidgetChannel.postMessage(jsonString);
+              return true;
+            } else {
+              // Store for later delivery
+              if (!window._pendingMessages) window._pendingMessages = [];
+              window._pendingMessages.push(data);
               return false;
             }
-          };
-          
-          // Try to process any pending messages
-          window.processStoredMessages = function() {
-            if (window._pendingMessages && window._pendingMessages.length > 0 && window.WidgetChannel) {
-              console.log('Processing ' + window._pendingMessages.length + ' stored messages');
-              while (window._pendingMessages.length > 0) {
-                const msg = window._pendingMessages.shift();
-                window.safePostToFlutter(msg);
-              }
+          } catch(e) {
+            console.error('Error in safePostToFlutter:', e);
+            return false;
+          }
+        };
+        
+        // Try to process any pending messages
+        window.processStoredMessages = function() {
+          if (window._pendingMessages && window._pendingMessages.length > 0 && window.WidgetChannel) {
+            while (window._pendingMessages.length > 0) {
+              const msg = window._pendingMessages.shift();
+              window.safePostToFlutter(msg);
             }
-          };
+          }
+        };
+        
+        // Check periodically if WidgetChannel is available to process stored messages
+        setInterval(window.processStoredMessages, 1000);
+        
+        // Listen for messages - especially those from our target domain
+        window.addEventListener('message', function(event) {
+          // Check if this is from our domain of interest
+          const fromTargetDomain = event.origin.includes('pr-476-widget.dev.studdy.ai');
           
-          // Check every second if WidgetChannel is available to process stored messages
-          setInterval(window.processStoredMessages, 1000);
-          
-          window.addEventListener('message', function(event) {
-            console.log('WIDGET RECEIVED MESSAGE:', JSON.stringify(event.data));
-            
-            // Check if it has a valid message format
-            if (event.data && typeof event.data.type === 'string') {
-              // Send to Flutter via JavaScriptChannel
-              const success = window.safePostToFlutter(event.data);
-              if (success) {
-                console.log('Successfully forwarded message to Flutter: ' + event.data.type);
-              } else {
-                console.log('Message saved for later delivery: ' + event.data.type);
-              }
-            } else {
-              console.log('Ignored message with invalid format');
+          if (event.data && typeof event.data.type === 'string') {
+            // Log all messages received
+            if (window.DirectInterceptor) {
+              const source = fromTargetDomain ? 'FROM TARGET DOMAIN: ' : '';
+              window.DirectInterceptor.postMessage('I RECEIVED A MESSAGE ' + source + JSON.stringify(event.data));
             }
-          });
-          
-          // Let Flutter know the listener is set up
-          window.safePostToFlutter({
-            type: 'INIT_COMPLETE',
-            payload: { success: true }
-          });
-          
-          console.log('Message listener setup complete on WebView');
-        }, 500); // Wait 500ms for the channel to be registered
+            window.safePostToFlutter(event.data);
+          }
+        });
       })();
     ''');
+  }
+
+  // Handle messages from the widget via JavaScriptChannel
+  void _handleWidgetMessage(String messageString) {
+    try {
+      final message = jsonDecode(messageString);
+      final String type = message['type'] ?? '';
+      final dynamic payload = message['payload'];
+      print('I RECEIVED A MESSAGE: $message');
+
+      // Special handling for authentication responses to resolve the promise
+      if (type == 'AUTHENTICATION_RESPONSE' && _lastAuthCompleter != null && !_lastAuthCompleter!.isCompleted) {
+        print('EUREKA! Completing auth request via general message handler');
+        _lastAuthCompleter!.complete(payload ?? {});
+        _lastAuthCompleter = null;
+      }
+
+      // Debounce logic
+      final now = DateTime.now();
+      if (_lastMessageType == type && 
+          _lastMessageTime != null && 
+          now.difference(_lastMessageTime!).inMilliseconds < _debounceTimeMs) {
+        return;
+      }
+      
+      _lastMessageType = type;
+      _lastMessageTime = now;
+      
+      // Call the appropriate callback on the controller
+      switch (type) {
+        case 'AUTHENTICATION_RESPONSE':
+          if (onAuthenticationResponse != null) {
+            print('EUREKA! Calling onAuthenticationResponse callback');
+            onAuthenticationResponse!(payload);
+          }
+          break;
+        case 'WIDGET_DISPLAYED':
+          if (onWidgetDisplayed != null) {
+            onWidgetDisplayed!(payload ?? {});
+          }
+          break;
+        case 'WIDGET_HIDDEN':
+          if (onWidgetHidden != null) {
+            onWidgetHidden!(payload ?? {});
+          }
+          break;
+        case 'WIDGET_ENLARGED':
+          if (onWidgetEnlarged != null) {
+            onWidgetEnlarged!(payload ?? {});
+          }
+          break;
+        case 'WIDGET_MINIMIZED':
+          if (onWidgetMinimized != null) {
+            onWidgetMinimized!(payload ?? {});
+          }
+          break;
+      }
+    } catch (e) {
+      debugPrint('StuddyWidget: Error parsing message: $e');
+    }
   }
 
   void _logEvent(String message) {
     debugPrint('StuddyWidget: $message');
   }
 
+  // Simplified message sending
   void _sendMessageToWidget(String type, [Map<String, dynamic>? payload]) {
-    if (!_isInitialized) {
-      _logEvent('Widget not initialized yet');
-      return;
-    }
+    if (!_isInitialized) return;
 
     final message = {
       'type': type,
@@ -196,39 +259,56 @@ class StuddyWidgetController {
     };
 
     final String jsonMessage = jsonEncode(message);
-    print('MOBILE SENDING: $type message to widget');
     controller.runJavaScript('''
-      (function() {
-        try {
-          const message = $jsonMessage;
-          console.log('FLUTTER -> WIDGET: Sending message:', JSON.stringify(message));
-          
-          // Create an event to dispatch
-          const msgEvent = new MessageEvent('message', {
-            data: message,
-            origin: window.location.origin,
-            source: window
-          });
-          
-          // First try direct window.postMessage
-          window.postMessage(message, '*');
-          
-          // Then also try direct dispatch method for better compatibility
-          window.dispatchEvent(msgEvent);
-          
-          console.log('Message sent via two methods');
-        } catch(e) {
-          console.error('Error posting message:', e);
-        }
-      })();
+      try {
+        const message = $jsonMessage;
+        window.postMessage(message, '*');
+      } catch(e) {
+        console.error('Error posting message:', e);
+      }
     ''');
   }
   
-  // Authenticate with the Studdy platform
+  // Authenticate with the Studdy platform using a direct promise approach
   Future<Map<String, dynamic>> authenticate(WidgetAuthRequest authRequest) async {
-    _sendMessageToWidget('AUTHENTICATE', authRequest.toJson());
-    _logEvent('Authentication sent');
-    return {'success': true};
+    if (!_isInitialized) {
+      return {'success': false, 'error': 'Widget not initialized'};
+    }
+
+    final completer = Completer<Map<String, dynamic>>();
+    _lastAuthCompleter = completer;
+    
+    controller.addJavaScriptChannel(
+      'AuthChannel',
+      onMessageReceived: (JavaScriptMessage message) {
+        // Direct handling of authentication responses
+        final data = jsonDecode(message.message);
+        if (_lastAuthCompleter != null && !_lastAuthCompleter!.isCompleted) {
+          _lastAuthCompleter!.complete(data);
+        }
+        if (onAuthenticationResponse != null) {
+          onAuthenticationResponse!(data);
+        }
+      },
+    );
+
+    controller.runJavaScript('''
+      const authData = ${jsonEncode(authRequest.toJson())};
+      window.postMessage({ type: 'AUTHENTICATE', payload: authData }, '*');
+      
+      // Listen for authentication responses and directly send to channel
+      const authListener = function(event) {
+        if (event.data && event.data.type === 'AUTHENTICATION_RESPONSE') {
+          console.log('EUREKA: Auth response received');
+          window.AuthChannel.postMessage(JSON.stringify(event.data.payload || {}));
+          // Remove listener to prevent memory leaks
+          window.removeEventListener('message', authListener);
+        }
+      };
+      window.addEventListener('message', authListener);
+    ''');
+    
+    return completer.future;
   }
   
   // Control widget display
@@ -252,7 +332,6 @@ class StuddyWidgetController {
   
   Map<String, dynamic> minimize() {
     _sendMessageToWidget('MINIMIZE_WIDGET');
-    _logEvent('Widget minimized');
     return {'success': true};
   }
   
@@ -260,14 +339,12 @@ class StuddyWidgetController {
   Map<String, dynamic> setWidgetPosition(String position) {
     _widgetPosition = position;
     _sendMessageToWidget('SET_WIDGET_POSITION', {'position': position});
-    _logEvent('Widget position set to $position');
     return {'success': true};
   }
   
   Map<String, dynamic> setZIndex(int zIndex) {
     _zIndex = zIndex;
     _sendMessageToWidget('SET_Z_INDEX', {'zIndex': zIndex});
-    _logEvent('Widget zIndex set to $zIndex');
     return {'success': true};
   }
   
@@ -305,31 +382,23 @@ class StuddyWidget extends StatefulWidget {
 class _StuddyWidgetState extends State<StuddyWidget> {
   late WebViewController _webViewController;
   
-  // Define constants for widget dimensions
-  static const double MINIMIZED_WIDTH = 80;
-  static const double MINIMIZED_HEIGHT = 80;
-  static const double DEFAULT_WIDTH = 400;
-  static const double DEFAULT_HEIGHT = 600;
+  // Define numeric constants for mobile dimensions
+  static const double MINIMIZED_WIDTH = 120.0; // Use 120 to match web version
+  static const double MINIMIZED_HEIGHT = 120.0;
+  static const double ENLARGED_WIDTH_PERCENTAGE = 0.9;
+  static const double ENLARGED_HEIGHT_PERCENTAGE = 0.9;
   
-  // State variables for widget dimensions and visibility
+  // State variables
   bool _isVisible = true;
   double _currentWidth = DEFAULT_WIDTH;
   double _currentHeight = DEFAULT_HEIGHT;
-  String _position = 'right'; // default position
+  String _position = DEFAULT_POSITION;
   bool _isListenerSetup = false;
   
   @override
   void initState() {
     super.initState();
     _initializeWebView();
-    // We'll set up listeners after the first frame when context is available
-    
-    // Schedule a connectivity check after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        _checkWebViewConnectivity();
-      }
-    });
   }
   
   @override
@@ -348,40 +417,30 @@ class _StuddyWidgetState extends State<StuddyWidget> {
       setState(() {
         _currentWidth = MINIMIZED_WIDTH;
         _currentHeight = MINIMIZED_HEIGHT;
-        _isVisible = true; // Ensure it's visible when minimized
+        _isVisible = true;
       });
-      print('MOBILE UI: Widget minimized, size set to $_currentWidth x $_currentHeight');
     };
     
     widget.controller.onWidgetEnlarged = (payload) {
       if (!mounted) return;
-      
-      // Get current screen size for enlarged dimensions
       final screenSize = MediaQuery.of(context).size;
       setState(() {
-        _currentWidth = screenSize.width * 0.9;
-        _currentHeight = screenSize.height * 0.9;
-        _isVisible = true; // Ensure it's visible when enlarged
-        
-        // Check if screen type is specified in payload
-        if (payload.containsKey('screen')) {
-          print('Enlarging to screen type: ${payload['screen']}');
-        }
+        // Make it explicitly larger than the default size
+        _currentWidth = screenSize.width * ENLARGED_WIDTH_PERCENTAGE;
+        _currentHeight = screenSize.height * ENLARGED_HEIGHT_PERCENTAGE;
+        _isVisible = true;
       });
-      print('MOBILE UI: Widget enlarged, size set to $_currentWidth x $_currentHeight');
     };
     
     widget.controller.onWidgetDisplayed = (_) {
       if (!mounted) return;
       setState(() {
         _isVisible = true;
-        // Reset to default size if not already minimized
-        if (_currentWidth != MINIMIZED_WIDTH) {
+        if (_currentWidth == MINIMIZED_WIDTH) {
           _currentWidth = DEFAULT_WIDTH;
           _currentHeight = DEFAULT_HEIGHT;
         }
       });
-      print('MOBILE UI: Widget displayed, visibility set to $_isVisible, size: $_currentWidth x $_currentHeight');
     };
     
     widget.controller.onWidgetHidden = (_) {
@@ -389,12 +448,10 @@ class _StuddyWidgetState extends State<StuddyWidget> {
       setState(() {
         _isVisible = false;
       });
-      print('MOBILE UI: Widget hidden, visibility set to $_isVisible');
     };
     
     widget.controller.onAuthenticationResponse = (response) {
       if (!mounted) return;
-      print('Processing auth response: ${jsonEncode(response)}');
       
       if (response.containsKey('publicConfigData')) {
         final config = response['publicConfigData'];
@@ -402,313 +459,123 @@ class _StuddyWidgetState extends State<StuddyWidget> {
           setState(() {
             if (config['defaultWidgetPosition'] != null) {
               _position = config['defaultWidgetPosition'];
-              print('Setting position to: $_position');
             }
             
             if (config['displayOnAuth'] == true) {
               _isVisible = true;
-              print('Setting visible due to displayOnAuth');
             }
           });
-          print('MOBILE UI: Authentication response processed, position=$_position, visible=$_isVisible');
         }
       }
     };
   }
   
   Future<void> _initializeWebView() async {
-    print('MOBILE: Initializing WebView controller with URL: ${widget.controller._widgetUrl}');
-    
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.transparent)
-      // Add JavaScript channels first, before any page loads
       ..addJavaScriptChannel(
         'WidgetChannel',
         onMessageReceived: (JavaScriptMessage message) {
-          print('MOBILE JS CHANNEL: Message received: ${message.message}');
-          _handleWidgetMessage(message.message);
+          widget.controller._handleWidgetMessage(message.message);
         },
       )
+      // Add message interceptor channel
+      ..addJavaScriptChannel(
+        'MessageInterceptor',
+        onMessageReceived: (JavaScriptMessage message) {
+          debugPrint('I RECEIVED A MESSAGE: ${message.message}');
+        },
+      )
+      // Only keep the console channel if needed for debugging - remove in production
       ..addJavaScriptChannel(
         'ConsoleChannel',
         onMessageReceived: (JavaScriptMessage message) {
-          print('WEBVIEW CONSOLE: ${message.message}');
+          debugPrint('WEBVIEW CONSOLE: ${message.message}');
         },
       )
-      // Set up navigation delegate
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (String url) {
-            print('MOBILE: WebView started loading: $url');
+            debugPrint('MOBILE: WebView started loading: $url');
           },
           onPageFinished: (String url) {
-            print('MOBILE: WebView finished loading: $url');
+            debugPrint('MOBILE: WebView finished loading: $url');
             
-            // Inject console.log interceptor AFTER page is loaded
+            // Set up global message event listener
             _webViewController.runJavaScript('''
-              (function() {
-                console.log('Setting up console interceptor');
-                const originalLog = console.log;
-                const originalError = console.error;
-                const originalWarn = console.warn;
-                
-                console.log = function() {
-                  if (window.ConsoleChannel) {
-                    const args = Array.from(arguments).map(a => String(a)).join(' ');
-                    window.ConsoleChannel.postMessage('LOG: ' + args);
-                  }
-                  return originalLog.apply(console, arguments);
-                };
-                
-                console.error = function() {
-                  if (window.ConsoleChannel) {
-                    const args = Array.from(arguments).map(a => String(a)).join(' ');
-                    window.ConsoleChannel.postMessage('ERROR: ' + args);
-                  }
-                  return originalError.apply(console, arguments);
-                };
-                
-                console.warn = function() {
-                  if (window.ConsoleChannel) {
-                    const args = Array.from(arguments).map(a => String(a)).join(' ');
-                    window.ConsoleChannel.postMessage('WARN: ' + args);
-                  }
-                  return originalWarn.apply(console, arguments);
-                };
-                
-                // Add a message listener using the WidgetChannel pattern
-                window.addEventListener('message', function(event) {
-                  if (event.data && typeof event.data.type === 'string') {
-                    console.log('Message received:', event.data.type);
-                    // Send to Flutter via the JavaScriptChannel
-                    window.WidgetChannel.postMessage(JSON.stringify(event.data));
-                  }
-                });
-                
-                console.log('Console interceptor and message listeners ready');
-              })();
+              console.log('Widget WebView loaded');
+              
+              // Add message event listener to capture all postMessage events
+              window.addEventListener('message', function(event) {
+                // Check if message is from our domain or wildcard
+                if (event.data && typeof event.data.type === 'string') {
+                  // Send to Flutter through MessageInterceptor channel
+                  MessageInterceptor.postMessage(JSON.stringify(event.data));
+                }
+              });
             ''');
             
-            // Now initialize controller after page is loaded and scripts injected
+            // Initialize controller
             widget.controller.initialize(_webViewController);
-            
-            // Test channel communication
-            _webViewController.runJavaScript('''
-              console.log('Testing channel communication...');
-              if (window.WidgetChannel) {
-                window.WidgetChannel.postMessage(JSON.stringify({
-                  type: 'INIT_COMPLETE',
-                  payload: { success: true }
-                }));
-                console.log('Test message sent successfully');
-              } else {
-                console.error('WidgetChannel not available!');
-              }
-            ''');
           },
           onWebResourceError: (WebResourceError error) {
-            print('MOBILE: WebView error: ${error.description}');
+            debugPrint('MOBILE: WebView error: ${error.description}');
           },
         ),
       );
     
-    // Load the URL last
     _webViewController.loadRequest(Uri.parse(widget.controller._widgetUrl));
-  }
-  
-  // Add a method to check connectivity and run diagnostic tests
-  Future<void> _checkWebViewConnectivity() async {
-    if (!widget.controller._isInitialized || _webViewController == null) {
-      print('WebView not initialized yet');
-      return;
-    }
-    
-    print('Running WebView connectivity test...');
-    try {
-      // Check if JavaScript is enabled
-      _webViewController.runJavaScript('''
-        (function() {
-          console.log('======== CONNECTIVITY TEST STARTING ========');
-          
-          // Check if our channel exists
-          if (typeof window.WidgetChannel !== 'undefined') {
-            console.log('✅ WidgetChannel is defined');
-            
-            // Check if postMessage exists
-            if (typeof window.WidgetChannel.postMessage === 'function') {
-              console.log('✅ window.WidgetChannel.postMessage is a function');
-              
-              // Try to send a test message
-              try {
-                window.WidgetChannel.postMessage(JSON.stringify({
-                  type: 'CONNECTIVITY_TEST',
-                  payload: { timestamp: Date.now() }
-                }));
-                console.log('✅ Test message sent successfully');
-              } catch(e) {
-                console.error('❌ Failed to send test message:', e);
-              }
-            } else {
-              console.error('❌ window.WidgetChannel.postMessage is NOT a function');
-            }
-          } else {
-            console.error('❌ WidgetChannel is NOT defined');
-            
-            // Check what channels are available
-            const propertyNames = Object.getOwnPropertyNames(window);
-            console.log('Available window properties:', propertyNames.join(', '));
-          }
-
-          // Check message event listener
-          try {
-            const testEvent = new MessageEvent('message', {
-              data: {type: 'TEST_EVENT', payload: {}},
-              origin: window.location.origin,
-              source: window
-            });
-            
-            window.dispatchEvent(testEvent);
-            console.log('✅ Test event dispatched');
-          } catch(e) {
-            console.error('❌ Error dispatching test event:', e);
-          }
-          
-          console.log('======== CONNECTIVITY TEST COMPLETE ========');
-        })();
-      ''');
-    } catch (e) {
-      print('Error running connectivity test: $e');
-    }
-  }
-  
-  // Handle messages from the widget JavaScriptChannel
-  void _handleWidgetMessage(String messageString) {
-    try {
-      print('MOBILE PROCESSING: Raw message: $messageString');
-      final message = jsonDecode(messageString);
-      
-      if (!message.containsKey('type')) {
-        print('Invalid message format, missing type field');
-        return;
-      }
-      
-      final String type = message['type'];
-      final dynamic payload = message['payload'];
-      
-      print('MOBILE SUCCESS: Received message of type: $type');
-      
-      // Call the appropriate callback on the controller
-      switch (type) {
-        case 'AUTHENTICATION_RESPONSE':
-          print('AUTH RESPONSE received with payload: ${jsonEncode(payload)}');
-          if (widget.controller.onAuthenticationResponse != null) {
-            widget.controller.onAuthenticationResponse!(payload);
-          }
-          break;
-        case 'WIDGET_DISPLAYED':
-          print('WIDGET_DISPLAYED event received');
-          if (widget.controller.onWidgetDisplayed != null) {
-            widget.controller.onWidgetDisplayed!(payload ?? {});
-          }
-          break;
-        case 'WIDGET_HIDDEN':
-          print('WIDGET_HIDDEN event received');
-          if (widget.controller.onWidgetHidden != null) {
-            widget.controller.onWidgetHidden!(payload ?? {});
-          }
-          break;
-        case 'WIDGET_ENLARGED':
-          print('WIDGET_ENLARGED event received');
-          if (widget.controller.onWidgetEnlarged != null) {
-            widget.controller.onWidgetEnlarged!(payload ?? {});
-          }
-          break;
-        case 'WIDGET_MINIMIZED':
-          print('WIDGET_MINIMIZED event received');
-          if (widget.controller.onWidgetMinimized != null) {
-            widget.controller.onWidgetMinimized!(payload ?? {});
-          }
-          break;
-        case 'INIT_COMPLETE':
-          print('Widget initialization complete');
-          break;
-        default:
-          print('Unknown message type: $type');
-      }
-    } catch (e) {
-      print('ERROR parsing message: $e');
-      print('Message that failed: $messageString');
-    }
   }
   
   @override
   Widget build(BuildContext context) {
-    print('MOBILE: Building widget with visibility: $_isVisible, width: $_currentWidth, height: $_currentHeight');
-    return Stack(
-      children: [
-        // The main widget
-        Visibility(
-          visible: _isVisible,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            width: widget.width ?? _currentWidth,
-            height: widget.height ?? _currentHeight,
-            alignment: _position == 'left' ? Alignment.bottomLeft : Alignment.bottomRight,
-            margin: const EdgeInsets.all(20),
-            child: WebViewWidget(controller: _webViewController),
-          ),
+    if (!_isVisible) {
+      return const SizedBox.shrink(); // Hidden state
+    }
+
+    final screenSize = MediaQuery.of(context).size;
+
+    // Choose the correct widget based on state
+    Widget contentWidget;
+
+    if (_currentWidth == MINIMIZED_WIDTH) {
+      // MINIMIZED STATE
+      contentWidget = SizedBox(
+        width: MINIMIZED_WIDTH,
+        height: MINIMIZED_HEIGHT,
+        child: WebViewWidget(controller: _webViewController),
+      );
+    } else {
+      // NORMAL OR ENLARGED STATE
+      final bool isEnlarged = _currentWidth >= screenSize.width * 0.8;
+      
+      final double targetWidth = isEnlarged 
+          ? screenSize.width * ENLARGED_WIDTH_PERCENTAGE
+          : _currentWidth;
+      
+      final double targetHeight = isEnlarged 
+          ? screenSize.height * ENLARGED_HEIGHT_PERCENTAGE
+          : _currentHeight;
+      
+      contentWidget = Container(
+        width: targetWidth,
+        height: targetHeight,
+        child: WebViewWidget(controller: _webViewController),
+      );
+    }
+
+    // Position the content with proper alignment
+    return Align(
+      alignment: _position == 'left' ? Alignment.bottomLeft : Alignment.bottomRight,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          child: contentWidget,
         ),
-        
-        // Add a debug button overlay for testing
-        if (widget.controller._isInitialized)
-          Positioned(
-            top: 10,
-            right: 10,
-            child: Opacity(
-              opacity: 0.7,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.refresh, color: Colors.white),
-                      onPressed: () {
-                        print('Testing widget communication...');
-                        // Run a test script that verifies communication
-                        _webViewController.runJavaScript('''
-                          console.log('TEST: Sending test messages to Flutter...');
-                          
-                          // Test minimize
-                          window.postMessage({
-                            type: 'WIDGET_MINIMIZED',
-                            payload: {}
-                          }, '*');
-                          
-                          // Wait 2 seconds then test enlarge
-                          setTimeout(() => {
-                            window.postMessage({
-                              type: 'WIDGET_ENLARGED',
-                              payload: { screen: 'solver' }
-                            }, '*');
-                            console.log('TEST: Sent enlarge message');
-                          }, 2000);
-                        ''');
-                      },
-                      tooltip: 'Test Widget Communication',
-                    ),
-                    const Text('Test', style: TextStyle(color: Colors.white, fontSize: 10)),
-                  ],
-                ),
-              ),
-            ),
-          ),
-      ],
+      ),
     );
   }
 } 

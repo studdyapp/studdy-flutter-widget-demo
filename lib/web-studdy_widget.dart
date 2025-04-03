@@ -53,10 +53,21 @@ class PageData {
   }
 }
 
+// Move constants from _StuddyWidgetState to class-level constants for access by the controller
+const String WIDGET_MAX_HEIGHT = '95%';
+const String WIDGET_MAX_WIDTH = '60%';
+const String MINIMIZED_WIDGET_HEIGHT = '120px';
+const String MINIMIZED_WIDGET_WIDTH = '120px';
+const String ENLARGED_WIDGET_HEIGHT = '95%';
+const String ENLARGED_WIDGET_WIDTH = '464px';
+const String WIDGET_OFFSET = '10px';
+const int DEFAULT_ZINDEX = 9999;
+const String DEFAULT_POSITION = 'right';
+
 class StuddyWidgetController {
   late WebViewController controller;
   bool _isInitialized = false;
-  String _widgetUrl = 'https://pr-468-widget.dev.studdy.ai';
+  String _widgetUrl = 'https://pr-476-widget.dev.studdy.ai';
   html.IFrameElement? _iframe;
 
   Function(Map<String, dynamic>)? onAuthenticationResponse;
@@ -80,7 +91,7 @@ class StuddyWidgetController {
     this.onWidgetHidden,
     this.onWidgetEnlarged,
     this.onWidgetMinimized,
-    String widgetUrl = 'https://pr-468-widget.dev.studdy.ai',
+    String widgetUrl = 'https://pr-476-widget.dev.studdy.ai',
   }) {
     _widgetUrl = widgetUrl;
   }
@@ -153,7 +164,6 @@ class StuddyWidgetController {
     // Add JavaScript to forward window messages to our channel
     controller.runJavaScript('''
       window.addEventListener('message', function(event) {
-        console.log('WIDGET RECEIVED A MESSAGE HOLY FUCK:', JSON.stringify(event.data));
         try {
           if (event.data && event.data.type) {
             window.WidgetChannel.postMessage(JSON.stringify(event.data));
@@ -262,27 +272,47 @@ class StuddyWidgetController {
     return {'success': true};
   }
 
+  Map<String, dynamic> setPageData(PageData pageData) {
+    _sendMessageToWidget('SET_PAGE_DATA', pageData.toJson());
+    _logEvent('Page data set');
+    return {'success': true};
+  }
+
   Map<String, dynamic> display() {
     _sendMessageToWidget('DISPLAY_WIDGET');
     _logEvent('Widget displayed');
+    if (_iframe != null) {
+      _iframe!.style.display = 'block';
+    }
     return {'success': true};
   }
 
   Map<String, dynamic> hide() {
     _sendMessageToWidget('HIDE_WIDGET');
     _logEvent('Widget hidden');
+    if (_iframe != null) {
+      _iframe!.style.display = 'none';
+    }
     return {'success': true};
   }
 
   Map<String, dynamic> enlarge([String? screen]) {
     _sendMessageToWidget('ENLARGE_WIDGET', {'screen': screen ?? 'solver'});
     _logEvent('Widget enlarged to ${screen ?? "solver"} screen');
+    if (_iframe != null) {
+      _iframe!.style.width = ENLARGED_WIDGET_WIDTH;
+      _iframe!.style.height = ENLARGED_WIDGET_HEIGHT;
+    }
     return {'success': true};
   }
 
   Map<String, dynamic> minimize() {
     _sendMessageToWidget('MINIMIZE_WIDGET');
     _logEvent('Widget minimized');
+    if (_iframe != null) {
+      _iframe!.style.width = MINIMIZED_WIDGET_WIDTH;
+      _iframe!.style.height = MINIMIZED_WIDGET_HEIGHT;
+    }
     return {'success': true};
   }
 
@@ -290,6 +320,10 @@ class StuddyWidgetController {
     _widgetPosition = position;
     _sendMessageToWidget('SET_WIDGET_POSITION', {'position': position});
     _logEvent('Widget position set to $position');
+    if (_iframe != null) {
+      _iframe!.style.left = position == 'left' ? WIDGET_OFFSET : 'auto';
+      _iframe!.style.right = position == 'right' ? WIDGET_OFFSET : 'auto';
+    }
     return {'success': true};
   }
 
@@ -297,6 +331,9 @@ class StuddyWidgetController {
     _zIndex = zIndex;
     _sendMessageToWidget('SET_Z_INDEX', {'zIndex': zIndex});
     _logEvent('Widget zIndex set to $zIndex');
+    if (_iframe != null) {
+      _iframe!.style.zIndex = zIndex.toString();
+    }
     return {'success': true};
   }
 
@@ -304,12 +341,6 @@ class StuddyWidgetController {
     _targetLocale = locale;
     _sendMessageToWidget('SET_TARGET_LOCALE', {'locale': locale});
     _logEvent('Widget target locale set to $locale');
-    return {'success': true};
-  }
-
-  Map<String, dynamic> setPageData(PageData pageData) {
-    _sendMessageToWidget('SET_PAGE_DATA', pageData.toJson());
-    _logEvent('Page data set');
     return {'success': true};
   }
 }
@@ -332,21 +363,13 @@ class StuddyWidget extends StatefulWidget {
 
 class _StuddyWidgetState extends State<StuddyWidget> {
   late final String viewId;
-  // Add constants for widget dimensions
-  static const String MINIMIZED_WIDGET_WIDTH = '80px';
-  static const String MINIMIZED_WIDGET_HEIGHT = '80px';
-  static const String ENLARGED_WIDGET_WIDTH = '90vw';
-  static const String ENLARGED_WIDGET_HEIGHT = '90vh';
-  static const String WIDGET_OFFSET = '20px';
   
   @override
   void initState() {
     super.initState();
-    // Create a stable viewId that doesn't change on rebuilds
     viewId = 'studdy-widget-${DateTime.now().millisecondsSinceEpoch}';
     
     if (kIsWeb) {
-      // Register the view factory only once during initState
       _registerViewFactory();
     }
   }
@@ -358,11 +381,18 @@ class _StuddyWidgetState extends State<StuddyWidget> {
         final iframe = html.IFrameElement()
           ..src = widget.controller._widgetUrl
           ..style.border = 'none'
-          ..style.position = 'absolute'
-          ..style.bottom = '20px'
-          ..style.right = '20px'
-          ..style.width = '${widget.width ?? 400}px'
-          ..style.height = '${widget.height ?? 600}px';
+          ..style.position = 'fixed'
+          ..style.bottom = WIDGET_OFFSET
+          ..style.right = DEFAULT_POSITION == 'right' ? WIDGET_OFFSET : 'auto'
+          ..style.left = DEFAULT_POSITION == 'left' ? WIDGET_OFFSET : 'auto'
+          ..style.width = MINIMIZED_WIDGET_WIDTH
+          ..style.height = MINIMIZED_WIDGET_HEIGHT
+          ..style.maxHeight = WIDGET_MAX_HEIGHT
+          ..style.maxWidth = WIDGET_MAX_WIDTH
+          ..style.zIndex = DEFAULT_ZINDEX.toString()
+          ..style.display = 'none'  // Hidden initially until authenticated
+          ..allow = 'microphone; camera'
+          ..title = 'Studdy Widget';
         
         // Mark controller as initialized on iframe load
         iframe.onLoad.listen((_) {
