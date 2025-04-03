@@ -85,6 +85,10 @@ class StuddyWidgetController {
   String? _lastMessageType;
   static const _debounceTimeMs = 500; // Minimum time between same message types
 
+  static Map<String, dynamic>? _latestAuthResponse;
+  static final _authResponseNotifier = StreamController<Map<String, dynamic>>.broadcast();
+  static Stream<Map<String, dynamic>> get authResponseStream => _authResponseNotifier.stream;
+
   StuddyWidgetController({
     this.onAuthenticationResponse,
     this.onWidgetDisplayed,
@@ -100,126 +104,12 @@ class StuddyWidgetController {
     try {
       controller = webViewController;
       _isInitialized = true;
-      _setupMessageHandlers();
-      debugPrint('StuddyWidget: Controller successfully initialized');
+      // debugPrint('StuddyWidget: Controller successfully initialized');
     } catch (e) {
-      debugPrint('StuddyWidget: Error initializing controller: $e');
+      // debugPrint('StuddyWidget: Error initializing controller: $e');
     }
   }
 
-  void _setupMessageHandlers() {
-    if (!_isInitialized) return;
-    
-    // Add a global window message listener
-    html.window.addEventListener('message', (html.Event event) {
-      final html.MessageEvent messageEvent = event as html.MessageEvent;
-      
-      // Check if this is a message from our widget
-      if (_iframe != null && messageEvent.source != _iframe!.contentWindow) {
-        return; // Ignore messages not from our iframe
-      }
-      
-      try {
-        final message = messageEvent.data;
-        final String type = message['type'] ?? '';
-        final dynamic payload = message['payload'];
-        
-        print('DIRECT! Message received from widget: type=$type');
-        
-        // Process the message directly
-        switch (type) {
-          case 'AUTHENTICATION_RESPONSE':
-            if (onAuthenticationResponse != null) onAuthenticationResponse!(payload);
-            break;
-          case 'WIDGET_DISPLAYED':
-            if (onWidgetDisplayed != null) onWidgetDisplayed!(payload ?? {});
-            break;
-          case 'WIDGET_HIDDEN':
-            if (onWidgetHidden != null) onWidgetHidden!(payload ?? {});
-            break;
-          case 'WIDGET_ENLARGED':
-            if (onWidgetEnlarged != null) onWidgetEnlarged!(payload ?? {});
-            break;
-          case 'WIDGET_MINIMIZED':
-            print('EUREUKA! Minimized widget');
-            if (onWidgetMinimized != null) onWidgetMinimized!(payload ?? {});
-            break;
-          default:
-            _logEvent('Unknown message type: $type');
-        }
-      } catch (e) {
-        _logEvent('Error processing message: $e');
-      }
-    });
-    
-    // Original JavaScript channel setup
-    controller.addJavaScriptChannel(
-      'WidgetChannel',
-      onMessageReceived: (JavaScriptMessage message) {
-        print('JS CHANNEL: Message received: ${message.message}');
-        _handleWidgetMessage(message.message);
-      },
-    );
-    
-    // Add JavaScript to forward window messages to our channel
-    controller.runJavaScript('''
-      window.addEventListener('message', function(event) {
-        try {
-          if (event.data && event.data.type) {
-            window.WidgetChannel.postMessage(JSON.stringify(event.data));
-          }
-        } catch(e) {
-          console.error('Error forwarding message:', e);
-        }
-      });
-    ''');
-  }
-
-  void _handleWidgetMessage(String messageString) {
-    try {
-      final message = jsonDecode(messageString);
-      final String type = message['type'] ?? '';
-      final dynamic payload = message['payload'];
-      print('EUREUKA! Receiving a message via JS channel, type: $type');
-
-      // Debounce logic - ignore repeated messages of same type within debounce time
-      final now = DateTime.now();
-      if (_lastMessageType == type && 
-          _lastMessageTime != null && 
-          now.difference(_lastMessageTime!).inMilliseconds < _debounceTimeMs) {
-        // Skip this message - it's a duplicate within debounce window
-        return;
-      }
-      
-      _lastMessageType = type;
-      _lastMessageTime = now;
-      
-      _logEvent('Received message of type: $type with payload: ${jsonEncode(payload ?? {})}');
-
-      switch (type) {
-        case 'AUTHENTICATION_RESPONSE':
-          if (onAuthenticationResponse != null) onAuthenticationResponse!(payload);
-          break;
-        case 'WIDGET_DISPLAYED':
-          if (onWidgetDisplayed != null) onWidgetDisplayed!(payload ?? {});
-          break;
-        case 'WIDGET_HIDDEN':
-          if (onWidgetHidden != null) onWidgetHidden!(payload ?? {});
-          break;
-        case 'WIDGET_ENLARGED':
-          if (onWidgetEnlarged != null) onWidgetEnlarged!(payload ?? {});
-          break;
-        case 'WIDGET_MINIMIZED':
-          print('EUREUKA! Minimized widget');
-          if (onWidgetMinimized != null) onWidgetMinimized!(payload ?? {});
-          break;
-        default:
-          _logEvent('Unknown message type: $type');
-      }
-    } catch (e) {
-      _logEvent('Error parsing message from widget: $e');
-    }
-  }
 
   void _logEvent(String message) {
     debugPrint('StuddyWidget: $message');
@@ -247,29 +137,63 @@ class StuddyWidgetController {
       } catch (e) {
         print('ERROR sending direct message: $e');
       }
-    } else {
-      print('SENDING VIA JS: Message to WebView: $type');
-      // Use JavaScript to send the message via window.postMessage
-      controller.runJavaScript('''
-        try {
-          const message = $jsonMessage;
-          console.log('Sending message from Flutter:', message);
-          window.postMessage(message, '*');
-        } catch(e) {
-          console.error('Error posting message:', e);
-        }
-      ''');
     }
   }
 
 
   Future<Map<String, dynamic>> authenticate(WidgetAuthRequest authRequest) async {
-    final jsonRequest = jsonEncode(authRequest.toJson());
-    print('type of jsonRequest: ${jsonRequest.runtimeType}');
-    _logEvent('Starting authentication with payload: $jsonRequest');
-    _sendMessageToWidget('AUTHENTICATE', authRequest.toJson());
-    _logEvent('Authentication message sent, waiting for response...');
-    return {'success': true};
+    if (!_isInitialized) {
+      return {'success': false, 'error': 'Widget not initialized'};
+    }
+
+    final completer = Completer<Map<String, dynamic>>();
+    html.EventListener? authListener;
+    authListener = (html.Event event) {
+      final messageEvent = event as html.MessageEvent;
+      final data = messageEvent.data;
+      if (data != null && data is Map && data['type'] == 'AUTHENTICATION_RESPONSE') {
+        html.window.removeEventListener('message', authListener);
+        final payload = Map<String, dynamic>.from(data['payload'] as Map);
+        if (payload['publicConfigData']['defaultZIndex'] != null) {
+          print('Default Z Index: ${payload['publicConfigData']['defaultZIndex']}');
+          _iframe!.style.zIndex = payload['publicConfigData']['defaultZIndex'].toString();
+        }
+        
+        if (payload['publicConfigData']['defaultWidgetPosition'] != null) {
+          _iframe!.style.left = payload['publicConfigData']['defaultWidgetPosition'] == 'left' ? WIDGET_OFFSET : 'auto';
+          _iframe!.style.right = payload['publicConfigData']['defaultWidgetPosition'] == 'right' ? WIDGET_OFFSET : 'auto';
+        }
+        if (payload['publicConfigData']['displayOnAuth'] == true) {
+          print('Display on auth: ${payload['publicConfigData']['displayOnAuth']}');
+          _iframe!.style.display = 'block';
+        }
+
+        completer.complete(payload);
+        if (onAuthenticationResponse != null) {
+          onAuthenticationResponse!(payload);
+        }
+      }
+    };
+    
+    // Add the temporary listener
+    html.window.addEventListener('message', authListener);
+    
+    // Send authentication request directly to iframe
+    _iframe!.contentWindow?.postMessage({
+      'type': 'AUTHENTICATE',
+      'payload': authRequest.toJson()
+    }, '*');
+    
+    // Set a timeout
+    Future.delayed(const Duration(seconds: 15), () {
+      if (!completer.isCompleted) {
+        // Remove listener on timeout
+        html.window.removeEventListener('message', authListener);
+        completer.complete({'success': false, 'error': 'Authentication timed out'});
+      }
+    });
+    
+    return completer.future;
   }
 
   Map<String, dynamic> setPageData(PageData pageData) {
@@ -363,6 +287,7 @@ class StuddyWidget extends StatefulWidget {
 
 class _StuddyWidgetState extends State<StuddyWidget> {
   late final String viewId;
+  html.EventListener? _messageListener;
   
   @override
   void initState() {
@@ -372,6 +297,16 @@ class _StuddyWidgetState extends State<StuddyWidget> {
     if (kIsWeb) {
       _registerViewFactory();
     }
+  }
+  
+  @override
+  void dispose() {
+    // Clean up event listener when widget is disposed
+    if (kIsWeb && _messageListener != null) {
+      html.window.removeEventListener('message', _messageListener!);
+      _messageListener = null;
+    }
+    super.dispose();
   }
   
   void _registerViewFactory() {
@@ -400,71 +335,46 @@ class _StuddyWidgetState extends State<StuddyWidget> {
           widget.controller._isInitialized = true;
           widget.controller._iframe = iframe;
           
-          // Set up direct message listeners for iframe style adjustments
-          html.window.addEventListener('message', (html.Event event) {
+          // Remove any existing listener before adding a new one
+          if (_messageListener != null) {
+            html.window.removeEventListener('message', _messageListener!);
+          }
+          
+          // Store reference to the listener function
+          _messageListener = (html.Event event) {
             final html.MessageEvent messageEvent = event as html.MessageEvent;
             
             try {
-              print('IFRAME STYLE: Message received from widget iframe');
+              print('IFRAME STYLE: Message received from widget iframe: ${messageEvent.data}');
               final message = messageEvent.data;
               final String type = message['type'] ?? '';
               
               switch (type) {
                 case 'WIDGET_MINIMIZED':
-                  print('IFRAME STYLE: Minimizing widget iframe');
                   iframe.style.width = MINIMIZED_WIDGET_WIDTH;
                   iframe.style.height = MINIMIZED_WIDGET_HEIGHT;
                   break;
                   
                 case 'WIDGET_ENLARGED':
-                  print('IFRAME STYLE: Enlarging widget iframe');
                   iframe.style.width = ENLARGED_WIDGET_WIDTH;
                   iframe.style.height = ENLARGED_WIDGET_HEIGHT;
                   break;
                   
                 case 'WIDGET_DISPLAYED':
-                  print('IFRAME STYLE: Displaying widget iframe');
                   iframe.style.display = 'block';
                   break;
                   
                 case 'WIDGET_HIDDEN':
-                  print('IFRAME STYLE: Hiding widget iframe');
                   iframe.style.display = 'none';
-                  break;
-                
-                case 'AUTHENTICATION_RESPONSE':
-                  print('IFRAME STYLE: Auth response received, adjusting styles');
-                  final payload = message['payload'];
-                  if (payload != null && payload['publicConfigData'] != null) {
-                    final config = payload['publicConfigData'];
-                    if (config['defaultZIndex'] != null) {
-                      iframe.style.zIndex = config['defaultZIndex'].toString();
-                    }
-                    
-                    if (config['defaultWidgetPosition'] != null) {
-                      iframe.style.left = config['defaultWidgetPosition'] == 'left' ? WIDGET_OFFSET : 'auto';
-                      iframe.style.right = config['defaultWidgetPosition'] == 'right' ? WIDGET_OFFSET : 'auto';
-                    }
-                    
-                    if (config['displayOnAuth'] == true) {
-                      iframe.style.display = 'block';
-                    }
-                  }
                   break;
               }
             } catch (e) {
               debugPrint('StuddyWidget: Error processing message for iframe style: $e');
             }
-          });
-        });
-        
-        // Add a resize listener to maintain widget state
-        html.window.onResize.listen((_) {
-          // Only update necessary styles, don't recreate the iframe
-          if (widget.controller._isInitialized && widget.controller._iframe != null) {
-            iframe.style.width = '${widget.width ?? 400}px';
-            iframe.style.height = '${widget.height ?? 600}px';
-          }
+          };
+          
+          // Add the listener with the stored reference
+          html.window.addEventListener('message', _messageListener!);
         });
         
         return iframe;
