@@ -70,17 +70,26 @@ const double DEFAULT_HEIGHT = 600.0;
 
 // Widget class that can be used to control the StuddyWidget
 class StuddyWidgetController {
+  // Static fields for auth response handling
+  static Map<String, dynamic>? _latestAuthResponse;
+  static final _authResponseNotifier = StreamController<Map<String, dynamic>>.broadcast();
+  static Stream<Map<String, dynamic>> get authResponseStream => _authResponseNotifier.stream;
+
   late WebViewController controller;
   bool _isInitialized = false;
   String _widgetUrl = 'https://pr-476-widget.dev.studdy.ai';
+  
+  // Widget state variables
+  String _position = DEFAULT_POSITION;  // Track the current position
+  int _zIndex = DEFAULT_ZINDEX;  // Track the current z-index
   
   // Message handler callbacks
   Function(Map<String, dynamic>)? onAuthenticationResponse;
   Function(Map<String, dynamic>)? onWidgetDisplayed;
   Function(Map<String, dynamic>)? onWidgetHidden;
   Function(Map<String, dynamic>)? onWidgetEnlarged;
-  Function(Map<String, dynamic>)? onWidgetMinimized;  
-    
+  Function(Map<String, dynamic>)? onWidgetMinimized;
+  
   StuddyWidgetController({
     this.onAuthenticationResponse,
     this.onWidgetDisplayed,
@@ -96,6 +105,15 @@ class StuddyWidgetController {
   void initialize(WebViewController webViewController) {
     controller = webViewController;
     _isInitialized = true;
+    
+    // Send initial configuration to widget if needed
+    if (_position != DEFAULT_POSITION) {
+      _sendMessageToWidget('SET_WIDGET_POSITION', {'position': _position});
+    }
+    
+    if (_zIndex != DEFAULT_ZINDEX) {
+      _sendMessageToWidget('SET_Z_INDEX', {'zIndex': _zIndex});
+    }
   }
   
 
@@ -134,22 +152,44 @@ class StuddyWidgetController {
     }
 
     final completer = Completer<Map<String, dynamic>>();
-
-    controller.runJavaScript('''
-      let authData = ${jsonEncode(authRequest.toJson())};
-      window.postMessage({ type: 'AUTHENTICATE', payload: authData }, '*');
+    
+    // Create a subscription to listen for auth responses via the static stream
+    final subscription = authResponseStream.listen((response) {
+      if (!completer.isCompleted) {
+        completer.complete(response);
+      }
+    });
+    
+    // Also keep the original callback mechanism as backup
+    final originalCallback = onAuthenticationResponse;
+    onAuthenticationResponse = (response) {
+      // Call the original callback if it exists
+      if (originalCallback != null) {
+        originalCallback(response);
+      }
       
-      // Listen for authentication responses and directly send to channel
-      const authListener = function(event) {
-        if (event.data && event.data.type === 'AUTHENTICATION_RESPONSE') {
-          console.log('This is where I would need to send the data back to function caller about success or failure');
-          window.AuthChannel.postMessage(JSON.stringify(event.data.payload || {}));
-          // Remove listener to prevent memory leaks
-          window.removeEventListener('message', authListener);
-        }
-      };
-      window.addEventListener('message', authListener);
-    ''');
+      // Complete our future with the response (if not already completed by stream)
+      if (!completer.isCompleted) {
+        completer.complete(response);
+      }
+      
+      // Restore the original callback
+      onAuthenticationResponse = originalCallback;
+    };
+    
+    // Send authentication request
+    _sendMessageToWidget('AUTHENTICATE', authRequest.toJson());
+    
+    // Set a timeout
+    Future.delayed(const Duration(seconds: 15), () {
+      if (!completer.isCompleted) {
+        completer.complete({'success': false, 'error': 'Authentication timed out'});
+        // Restore callback if timeout occurs
+        onAuthenticationResponse = originalCallback;
+      }
+      // Clean up subscription
+      subscription.cancel();
+    });
     
     return completer.future;
   }
@@ -157,19 +197,16 @@ class StuddyWidgetController {
   // Control widget display
   Map<String, dynamic> display() {
     _sendMessageToWidget('DISPLAY_WIDGET');
-    _logEvent('Widget displayed');
     return {'success': true};
   }
   
   Map<String, dynamic> hide() {
     _sendMessageToWidget('HIDE_WIDGET');
-    _logEvent('Widget hidden');
     return {'success': true};
   }
   
   Map<String, dynamic> enlarge([String? screen]) {
     _sendMessageToWidget('ENLARGE_WIDGET', {'screen': screen ?? 'solver'});
-    _logEvent('Widget enlarged to ${screen ?? "solver"} screen');
     return {'success': true};
   }
   
@@ -180,24 +217,41 @@ class StuddyWidgetController {
   
   // Configure widget
   Map<String, dynamic> setWidgetPosition(String position) {
+    if (position != 'left' && position != 'right') {
+      return {'success': false, 'error': 'Position must be "left" or "right"'};
+    }
+    
+    // Update internal position state
+    _position = position;
+    
+    // Send message to the widget
     _sendMessageToWidget('SET_WIDGET_POSITION', {'position': position});
+    
     return {'success': true};
   }
   
   Map<String, dynamic> setZIndex(int zIndex) {
+    // Validate zIndex
+    if (zIndex < 0) {
+      return {'success': false, 'error': 'Z-index cannot be negative'};
+    }
+    
+    // Update internal z-index state
+    _zIndex = zIndex;
+    
+    // Send message to widget
     _sendMessageToWidget('SET_Z_INDEX', {'zIndex': zIndex});
+    
     return {'success': true};
   }
   
   Map<String, dynamic> setTargetLocale(String locale) {
     _sendMessageToWidget('SET_TARGET_LOCALE', {'locale': locale});
-    _logEvent('Widget target locale set to $locale');
     return {'success': true};
   }
   
   Map<String, dynamic> setPageData(PageData pageData) {
     _sendMessageToWidget('SET_PAGE_DATA', pageData.toJson());
-    _logEvent('Page data set');
     return {'success': true};
   }
 }
@@ -239,7 +293,6 @@ class _StuddyWidgetState extends State<StuddyWidget> {
   bool _isVisible = true;
   double _currentWidth = DEFAULT_WIDTH;
   double _currentHeight = DEFAULT_HEIGHT;
-  String _position = DEFAULT_POSITION;
   
   @override
   void initState() {
@@ -258,48 +311,73 @@ class _StuddyWidgetState extends State<StuddyWidget> {
       ..addJavaScriptChannel(
         'MessageInterceptor',
         onMessageReceived: (JavaScriptMessage message) {
-          debugPrint('Message received from widget ${message.message}');
           //handle message affects here
           final messageData = jsonDecode(message.message);
           final String type = messageData['type'];
           final dynamic payload = messageData['payload'];
 
-
-          //THIS IS WHERE YOU HANDLE THINGS LIKE 
-
           if (type == 'AUTHENTICATION_RESPONSE') {
-            //THIS SHOULD BE REMOVED AND INSTEAD PUT INSIDE OF AUTHENTICATE FUNCTION, to deliver if success or failure
-            print('AUTH RESPONSE PAYLOAD: $payload');
+            // Process authentication response
+            final authData = payload as Map<String, dynamic>;
+            
+            // Update the static response data
+            StuddyWidgetController._latestAuthResponse = authData;
+            
+            // Notify any listeners via the static stream
+            StuddyWidgetController._authResponseNotifier.add(authData);
+            
+            // Call the controller's callback if it exists
+            if (widget.controller.onAuthenticationResponse != null) {
+              widget.controller.onAuthenticationResponse!(authData);
+            }
+          }
+
+          if (type == 'SET_WIDGET_POSITION') {
+            // Update position from widget if it sends a position update
+            if (payload is Map && payload.containsKey('position')) {
+              final position = payload['position'] as String;
+              setState(() {
+                widget.controller._position = position;
+              });
+            }
+          }
+
+          if (type == 'SET_Z_INDEX') {
+            // Update z-index from widget if it sends a z-index update
+            if (payload is Map && payload.containsKey('zIndex')) {
+              final zIndex = payload['zIndex'] as int;
+              setState(() {
+                widget.controller._zIndex = zIndex;
+              });
+            }
           }
 
           if (type == 'WIDGET_DISPLAYED') {
-            //set display to block, no width or height changes            
-            
-            print('WIDGET DISPLAYED PAYLOAD: $payload');
+            setState(() {
+              _isVisible = true;
+            });
           }
           
           if (type == 'WIDGET_HIDDEN') {
-            //do the widget hidden effects here
-            //set display to none
+            setState(() {
+              _isVisible = false;
+            });
           }
 
           if (type == 'WIDGET_ENLARGED') {
-            //do the widget enlarged effects here
-            //make width and height set to enlarged widgth and height
-
+            setState(() {
+              final screenSize = MediaQuery.of(context).size;
+              _currentWidth = screenSize.width * ENLARGED_WIDTH_PERCENTAGE;
+              _currentHeight = screenSize.height * ENLARGED_HEIGHT_PERCENTAGE;
+            });
           }
 
           if(type == 'WIDGET_MINIMIZED') {
-            //do the widget minimized effects here
-            //set display to none
+            setState(() {
+              _currentWidth = MINIMIZED_WIDTH;
+              _currentHeight = MINIMIZED_HEIGHT;
+            });
           }
-        },
-      )
-      // Only keep the console channel if needed for debugging - remove in production
-      ..addJavaScriptChannel(
-        'ConsoleChannel',
-        onMessageReceived: (JavaScriptMessage message) {
-          debugPrint('WEBVIEW CONSOLE: ${message.message}');
         },
       )
       ..setNavigationDelegate(
@@ -373,14 +451,15 @@ class _StuddyWidgetState extends State<StuddyWidget> {
       );
     }
 
+    // Get the position from the controller
+    final position = widget.controller._position;
+
     // Position the content with proper alignment
     return Align(
-      alignment: _position == 'left' ? Alignment.bottomLeft : Alignment.bottomRight,
+      alignment: position == 'left' ? Alignment.bottomLeft : Alignment.bottomRight,
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
+        child: Container(
           child: contentWidget,
         ),
       ),
