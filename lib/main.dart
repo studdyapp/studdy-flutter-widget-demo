@@ -58,7 +58,7 @@ class StuddyWidgetControlPanel extends StatefulWidget {
 class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
   late final StuddyWidgetController widgetController;
   String consoleOutput = '';
-  String widgetUrl = 'https://pr-476-widget.dev.studdy.ai';
+  String widgetUrl = 'http://localhost:5173';
 
   @override
   void initState() {
@@ -75,9 +75,9 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
   }
 
   void _authenticate() {
-    final tenantIdController = TextEditingController(text: 'studdy');
+    final tenantIdController = TextEditingController(text: 'leshko-test');
     final authMethodController = TextEditingController(text: 'jwt');
-    final jwtController = TextEditingController(text: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3N0dWRkeS5haSIsImF1ZCI6Imh0dHBzOi8vc3R1ZGR5LmFpIiwic3ViIjoiYmlnU3RldmUiLCJpYXQiOjE3NDMyMjQzNzk3NzAsImV4cCI6MTc0MzI0MjM3OTc3MH0.ZrjgCJRQ5CXSxAdpgFFzYOUtAh1oFWJ2djVC-JHTLgTnehip8dbsVd4sWAVr3FfW8oNFy-U2gTh3DsSeeJ-lwBf3l5nWXBDZ0x7yNHLmAL8tOLS7_-jViL4M0vqGSPYUmJOO7cPVXd3NBICzGPQYD5RbqioDawc9W2DFYaQTgUFNXGNEu4ZAiUXTMtVx9kgcPgZPbnga3J6ox2ZYJsTP4l7hpqYcDgeIaXnhNEmdH5kNz6-EK8A_9lKoPu6MoaDScJ2ApSUck1ahCz1R7Qf9pUySrTGguDWvr5yYjUcr-ywHLa-5fgrzJsUv3AfhAzciPpVzgm3G_VUeglCRfjuzAw');
+    final jwtController = TextEditingController(text: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LXVzZXItMSIsImlzcyI6Imh0dHBzOi8vc3R1ZGR5LmFpIiwiYXVkIjoic3R1ZGR5IiwidGVuYW50SWQiOiJsZXNoa28tdGVzdCIsInRpZXIiOiJwcmVtaXVtIiwiaWF0IjoxNzQzODIyMDM0LCJleHAiOjE3NzUzNTgwMzR9.TUwZcHuy2-gQjlgML4DeVr_VqUtD7InK1k4LlSuQ0TgdZCee4S6MSjbIz6j2ljQXVoiT8G5fvrWDzhkCHrCgFNbYpoXmF8Z_FXxuV-jhnmhuLCFlhUqhpDKSulHuqQMBwen47lLgE9qtdIFLO2z2s6HKlZr5A92lJZMLj5HO9waqC2K_zybR_EHAyLbtoTaH5Xty_44NHKWtUtBxzYbOPshol3nysjXgvffjINkFh5CVKNfuxOpQEmZx9spufAVoz2Hr73m-njxjZffXQxjikC3MEopENRud0T3K8RoF-K2ylcx9998W8G4eHkouooUlwZNBsFiFMHCKIdtgYNhr5A');
 
     showDialog(
       context: context,

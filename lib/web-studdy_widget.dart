@@ -67,7 +67,7 @@ const String DEFAULT_POSITION = 'right';
 class StuddyWidgetController {
   late WebViewController controller;
   bool _isInitialized = false;
-  String _widgetUrl = 'https://pr-476-widget.dev.studdy.ai';
+  String _widgetUrl = 'https://pr-482-widget.dev.studdy.ai';
   html.IFrameElement? _iframe;
 
   Function(Map<String, dynamic>)? onAuthenticationResponse;
@@ -87,7 +87,7 @@ class StuddyWidgetController {
     this.onWidgetHidden,
     this.onWidgetEnlarged,
     this.onWidgetMinimized,
-    String widgetUrl = 'https://pr-476-widget.dev.studdy.ai',
+    String widgetUrl = 'https://pr-482-widget.dev.studdy.ai',
   }) {
     _widgetUrl = widgetUrl;
   }
@@ -144,17 +144,31 @@ class StuddyWidgetController {
       final data = messageEvent.data;
       if (data != null && data is Map && data['type'] == 'AUTHENTICATION_RESPONSE') {
         html.window.removeEventListener('message', authListener);
-        final payload = Map<String, dynamic>.from(data['payload'] as Map);
-        if (payload['publicConfigData']['defaultZIndex'] != null) {
-          _iframe!.style.zIndex = payload['publicConfigData']['defaultZIndex'].toString();
-        }
         
-        if (payload['publicConfigData']['defaultWidgetPosition'] != null) {
-          _iframe!.style.left = payload['publicConfigData']['defaultWidgetPosition'] == 'left' ? WIDGET_OFFSET : 'auto';
-          _iframe!.style.right = payload['publicConfigData']['defaultWidgetPosition'] == 'right' ? WIDGET_OFFSET : 'auto';
-        }
-        if (payload['publicConfigData']['displayOnAuth'] == true) {
-          _iframe!.style.display = 'block';
+        // More robust handling of the payload
+        final payload = data['payload'] is Map 
+            ? Map<String, dynamic>.from(data['payload'] as Map) 
+            : <String, dynamic>{};
+        
+        // Safely handle publicConfigData
+        final publicConfigData = payload['publicConfigData'] is Map 
+            ? Map<String, dynamic>.from(payload['publicConfigData'] as Map)
+            : <String, dynamic>{};
+        
+        // Update iframe styles based on config if it exists
+        if (_iframe != null) {
+          if (publicConfigData.containsKey('defaultZIndex')) {
+            _iframe!.style.zIndex = publicConfigData['defaultZIndex'].toString();
+          }
+          
+          if (publicConfigData.containsKey('defaultWidgetPosition')) {
+            _iframe!.style.left = publicConfigData['defaultWidgetPosition'] == 'left' ? WIDGET_OFFSET : 'auto';
+            _iframe!.style.right = publicConfigData['defaultWidgetPosition'] == 'right' ? WIDGET_OFFSET : 'auto';
+          }
+          
+          if (publicConfigData.containsKey('displayOnAuth') && publicConfigData['displayOnAuth'] == true) {
+            _iframe!.style.display = 'block';
+          }
         }
 
         completer.complete(payload);
@@ -240,7 +254,6 @@ class StuddyWidgetController {
   }
 
   Map<String, dynamic> setZIndex(int zIndex) {
-    _zIndex = zIndex;
     _sendMessageToWidget('SET_Z_INDEX', {'zIndex': zIndex});
     _logEvent('Widget zIndex set to $zIndex');
     if (_iframe != null) {
