@@ -154,7 +154,7 @@ class StuddyWidgetController {
   }
   
   Map<String, dynamic> setTargetLocale(String locale) {
-    _sendMessageToWidget('SET_TARGET_LOCALE', {'locale': locale});
+    _sendMessageToWidget('SET_TARGET_LOCALE', {'targetLocale': locale});
     return {'success': true};
   }
   
