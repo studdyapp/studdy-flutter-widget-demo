@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'dart:developer';
 import 'studdy_widget.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'utils/widget_models.dart';
 
 import 'package:webview_flutter_web/webview_flutter_web.dart'
     if (dart.library.io) 'stub_web_package.dart';
@@ -111,7 +113,6 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
                   tenantId: tenantIdController.text,
                   authMethod: authMethodController.text,
                   jwt: jwtController.text,
-                  version: '1.0',
                 );
                 log('Authentication request sent');
                 final response = await StuddyWidget.authenticate(authRequest);
@@ -176,17 +177,42 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
               child: const Text('Set Page Data'),
               onPressed: () {
                 try {
-                  final problems = jsonDecode(problemJsonController.text) as List;
-                  final pageData = PageData(
-                    problems: List<Map<String, dynamic>>.from(problems),
-                    targetLocale: localeController.text,
-                  );
+                  // Try to parse JSON directly
+                  final jsonData = problemJsonController.text;
+                  
+                  // Create page data with simple parsing and validation
+                  PageData pageData;
+                  
+                  try {
+                    // Use the helper method to parse and validate JSON
+                    pageData = PageData.fromJsonString(jsonData);
+                    
+                    // Override targetLocale if provided in UI
+                    if (localeController.text.isNotEmpty) {
+                      pageData = PageData(
+                        problems: pageData.problems,
+                        targetLocale: localeController.text,
+                      );
+                    }
+                  } catch (e) {
+                    // Show validation error
+                    throw WidgetDataException('Invalid JSON format: ${e.toString()}');
+                  }
+                  
+                  // Send the data to the widget
                   final response = StuddyWidget.setPageData(pageData);
-                  log('Page data set');
+                  log('Page data set successfully');
                   log('Response: ${json.encode(response)}');
                   Navigator.of(context).pop();
                 } catch (e) {
                   log('Error setting page data: $e');
+                  // Show error to the user
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
                 }
               },
             ),
