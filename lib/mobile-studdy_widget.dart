@@ -57,7 +57,7 @@ const int DEFAULT_ZINDEX = 9999;
 const String DEFAULT_POSITION = 'right';
 
 
-// Widget class that can be used to control the StuddyWidget
+// Mobile StuddyWidget class that can be used for controlling the StuddyWidget
 class StuddyWidgetController {
   // Static fields for auth response handling
   static Map<String, dynamic>? _latestAuthResponse;
@@ -72,12 +72,6 @@ class StuddyWidgetController {
   String _position = DEFAULT_POSITION;  // Track the current position
   int _zIndex = DEFAULT_ZINDEX;  // Track the current z-index
   
-  // Message handler callbacks
-  Function(Map<String, dynamic>)? onAuthenticationResponse;
-  Function(Map<String, dynamic>)? onWidgetDisplayed;
-  Function(Map<String, dynamic>)? onWidgetHidden;
-  Function(Map<String, dynamic>)? onWidgetEnlarged;
-  Function(Map<String, dynamic>)? onWidgetMinimized;
   
   StuddyWidgetController({
     required String widgetUrl,
@@ -129,7 +123,6 @@ class StuddyWidgetController {
   /*
   CLIENT API
   */
-  // Authenticate with the Studdy platform using a direct promise approach
   Future<Map<String, dynamic>> authenticate(WidgetAuthRequest authRequest) async {
     if (!_isInitialized) {
       return {'success': false, 'error': 'Widget not initialized'};
@@ -144,22 +137,6 @@ class StuddyWidgetController {
       }
     });
     
-    // Also keep the original callback mechanism as backup
-    final originalCallback = onAuthenticationResponse;
-    onAuthenticationResponse = (response) {
-      // Call the original callback if it exists
-      if (originalCallback != null) {
-        originalCallback(response);
-      }
-      
-      // Complete our future with the response (if not already completed by stream)
-      if (!completer.isCompleted) {
-        completer.complete(response);
-      }
-      
-      // Restore the original callback
-      onAuthenticationResponse = originalCallback;
-    };
     
     // Send authentication request
     _sendMessageToWidget('AUTHENTICATE', authRequest.toJson());
@@ -168,8 +145,6 @@ class StuddyWidgetController {
     Future.delayed(const Duration(seconds: 15), () {
       if (!completer.isCompleted) {
         completer.complete({'success': false, 'error': 'Authentication timed out'});
-        // Restore callback if timeout occurs
-        onAuthenticationResponse = originalCallback;
       }
       // Clean up subscription
       subscription.cancel();
@@ -312,10 +287,6 @@ class _StuddyWidgetState extends State<StuddyWidget> {
             // Notify any listeners via the static stream
             StuddyWidgetController._authResponseNotifier.add(authData);
             
-            // Call the controller's callback if it exists
-            if (widget.controller.onAuthenticationResponse != null) {
-              widget.controller.onAuthenticationResponse!(authData);
-            }
           }
 
           if (type == 'SET_WIDGET_POSITION') {
@@ -374,21 +345,15 @@ class _StuddyWidgetState extends State<StuddyWidget> {
           onPageFinished: (String url) {
             debugPrint('MOBILE: WebView finished loading: $url');
             
-            // Set up global message event listener
-            _webViewController.runJavaScript('''
-              console.log('Widget WebView loaded');
-              
-              // Add message event listener to capture all postMessage events
+            _webViewController.runJavaScript('''              
               window.addEventListener('message', function(event) {
                 // Check if message is from our domain or wildcard
                 if (event.data && typeof event.data.type === 'string') {
-                  // Send to Flutter through MessageInterceptor channel
                   MessageInterceptor.postMessage(JSON.stringify(event.data));
                 }
               });
             ''');
             
-            // Initialize controller
             widget.controller.initialize(_webViewController);
           },
           onWebResourceError: (WebResourceError error) {
@@ -437,10 +402,7 @@ class _StuddyWidgetState extends State<StuddyWidget> {
       );
     }
 
-    // Get the position from the controller
     final position = widget.controller._position;
-
-    // Position the content with proper alignment
     return Align(
       alignment: position == 'left' ? Alignment.bottomLeft : Alignment.bottomRight,
       child: Padding(

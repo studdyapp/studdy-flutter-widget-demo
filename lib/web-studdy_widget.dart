@@ -53,7 +53,7 @@ class PageData {
   }
 }
 
-// Move constants from _StuddyWidgetState to class-level constants for access by the controller
+// Constants for the StuddyWidget
 const String WIDGET_MAX_HEIGHT = '95%';
 const String WIDGET_MAX_WIDTH = '60%';
 const String MINIMIZED_WIDGET_HEIGHT = '120px';
@@ -316,7 +316,6 @@ class _StuddyWidgetState extends State<StuddyWidget> {
         
         // Mark controller as initialized on iframe load
         iframe.onLoad.listen((_) {
-          debugPrint('StuddyWidget: iframe loaded');
           widget.controller._isInitialized = true;
           widget.controller._iframe = iframe;
           
