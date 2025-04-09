@@ -66,7 +66,7 @@ class StuddyWidgetController {
 
   late WebViewController controller;
   bool _isInitialized = false;
-  String _widgetUrl = 'https://pr-482-widget.dev.studdy.ai';
+  String _widgetUrl = '';
   
   // Widget state variables
   String _position = DEFAULT_POSITION;  // Track the current position
@@ -85,7 +85,7 @@ class StuddyWidgetController {
     this.onWidgetHidden,
     this.onWidgetEnlarged,
     this.onWidgetMinimized,
-    String widgetUrl = 'https://pr-482-widget.dev.studdy.ai',
+    required String widgetUrl,
   }) {
     _widgetUrl = widgetUrl;
   }

@@ -67,7 +67,7 @@ const String DEFAULT_POSITION = 'right';
 class StuddyWidgetController {
   late WebViewController controller;
   bool _isInitialized = false;
-  String _widgetUrl = 'https://pr-482-widget.dev.studdy.ai';
+  String _widgetUrl = '';
   html.IFrameElement? _iframe;
 
   Function(Map<String, dynamic>)? onAuthenticationResponse;
@@ -87,7 +87,7 @@ class StuddyWidgetController {
     this.onWidgetHidden,
     this.onWidgetEnlarged,
     this.onWidgetMinimized,
-    String widgetUrl = 'https://pr-482-widget.dev.studdy.ai',
+    required String widgetUrl,
   }) {
     _widgetUrl = widgetUrl;
   }

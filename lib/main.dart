@@ -29,6 +29,9 @@ void main() {
     WebViewController.fromPlatformCreationParams(params);
   }
 
+  // Initialize the StuddyWidget (optional)
+  // StuddyWidget.initialize(); // Not needed as it will use the default URL
+  
   runApp(const MainApp());
 }
 
@@ -56,22 +59,11 @@ class StuddyWidgetControlPanel extends StatefulWidget {
 }
 
 class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
-  late final StuddyWidgetController widgetController;
   String consoleOutput = '';
-  String widgetUrl = 'https://pr-482-widget.dev.studdy.ai';
 
   @override
   void initState() {
     super.initState();
-
-    widgetController = StuddyWidgetController(
-      onAuthenticationResponse: (response) => log('MAIN.dart: Authentication response received: ${json.encode(response)}'),
-      onWidgetDisplayed: (_) => log('MAIN.dart: Widget displayed event received'),
-      onWidgetHidden: (_) => log('MAIN.dart: Widget hidden event received'),
-      onWidgetEnlarged: (_) => log('MAIN.dart: Widget enlarged event received'),
-      onWidgetMinimized: (_) => log('MAIN.dart: Widget minimized event received'),
-      widgetUrl: widgetUrl,
-    );
   }
 
   void _authenticate() {
@@ -119,7 +111,7 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
                   jwt: jwtController.text,
                   version: '1.0',
                 );
-                widgetController.authenticate(authRequest);
+                StuddyWidget.authenticate(authRequest);
                 log('Authentication request sent');
                 Navigator.of(context).pop();
               },
@@ -190,7 +182,7 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
                     problems: List<Map<String, dynamic>>.from(problems),
                     targetLocale: localeController.text,
                   );
-                  widgetController.setPageData(pageData);
+                  StuddyWidget.setPageData(pageData);
                   log('Page data set');
                   Navigator.of(context).pop();
                 } catch (e) {
@@ -228,7 +220,7 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
               onPressed: () {
                 try {
                   final zIndex = int.parse(zIndexController.text);
-                  widgetController.setZIndex(zIndex);
+                  StuddyWidget.setZIndex(zIndex);
                   log('Z-Index set to $zIndex');
                   Navigator.of(context).pop();
                 } catch (e) {
@@ -243,7 +235,8 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
   }
 
   void _setWidgetUrl() {
-    final urlController = TextEditingController(text: widgetUrl);
+    // Get the current widget URL from StuddyWidget
+    final urlController = TextEditingController(text: StuddyWidget.widgetUrl);
 
     showDialog(
       context: context,
@@ -263,19 +256,9 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
             ElevatedButton(
               child: const Text('Set URL'),
               onPressed: () {
-                setState(() {
-                  widgetUrl = urlController.text;
-                  // Recreate the controller with the new URL
-                  widgetController = StuddyWidgetController(
-                    onAuthenticationResponse: (response) => log('MAIN.dart: Authentication response received: ${json.encode(response)}'),
-                    onWidgetDisplayed: (_) => log('MAIN.dart: Widget displayed event received'),
-                    onWidgetHidden: (_) => log('MAIN.dart: Widget hidden event received'),
-                    onWidgetEnlarged: (_) => log('MAIN.dart: Widget enlarged event received'),
-                    onWidgetMinimized: (_) => log('MAIN.dart: Widget minimized event received'),
-                    widgetUrl: widgetUrl,
-                  );
-                });
-                log('Widget URL set to $widgetUrl');
+                // Update the widget URL
+                StuddyWidget.initialize(widgetUrl: urlController.text);
+                log('Widget URL set to ${urlController.text}');
                 Navigator.of(context).pop();
               },
             ),
@@ -314,13 +297,34 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
                     child: const Text('Authenticate'),
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
                   ),
-                  ElevatedButton(onPressed: () => widgetController.display(), child: const Text('Display')),
-                  ElevatedButton(onPressed: () => widgetController.hide(), child: const Text('Hide')),
-                  ElevatedButton(onPressed: () => widgetController.enlarge('solver'), child: const Text('Enlarge (Solver)')),
-                  ElevatedButton(onPressed: () => widgetController.enlarge('tutor'), child: const Text('Enlarge (Tutor)')),
-                  ElevatedButton(onPressed: () => widgetController.minimize(), child: const Text('Minimize')),
-                  ElevatedButton(onPressed: () => widgetController.setWidgetPosition('right'), child: const Text('Position Right')),
-                  ElevatedButton(onPressed: () => widgetController.setWidgetPosition('left'), child: const Text('Position Left')),
+                  ElevatedButton(
+                    onPressed: () => StuddyWidget.display(),
+                    child: const Text('Display')
+                  ),
+                  ElevatedButton(
+                    onPressed: () => StuddyWidget.hide(),
+                    child: const Text('Hide')
+                  ),
+                  ElevatedButton(
+                    onPressed: () => StuddyWidget.enlarge('solver'),
+                    child: const Text('Enlarge (Solver)')
+                  ),
+                  ElevatedButton(
+                    onPressed: () => StuddyWidget.enlarge('tutor'),
+                    child: const Text('Enlarge (Tutor)')
+                  ),
+                  ElevatedButton(
+                    onPressed: () => StuddyWidget.minimize(),
+                    child: const Text('Minimize')
+                  ),
+                  ElevatedButton(
+                    onPressed: () => StuddyWidget.setWidgetPosition('right'),
+                    child: const Text('Position Right')
+                  ),
+                  ElevatedButton(
+                    onPressed: () => StuddyWidget.setWidgetPosition('left'),
+                    child: const Text('Position Left')
+                  ),
                   ElevatedButton(
                     onPressed: _setZIndex,
                     child: const Text('Set Z-Index'),
@@ -353,7 +357,13 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
 
     // Widget display area
     Widget displayArea = Expanded(
-      child: StuddyWidget(controller: widgetController),
+      child: StuddyWidget(
+        onAuthenticationResponse: (response) => log('MAIN.dart: Authentication response received: ${json.encode(response)}'),
+        onWidgetDisplayed: (_) => log('MAIN.dart: Widget displayed event received'),
+        onWidgetHidden: (_) => log('MAIN.dart: Widget hidden event received'),
+        onWidgetEnlarged: (_) => log('MAIN.dart: Widget enlarged event received'),
+        onWidgetMinimized: (_) => log('MAIN.dart: Widget minimized event received'),
+      ),
     );
 
     return Scaffold(
