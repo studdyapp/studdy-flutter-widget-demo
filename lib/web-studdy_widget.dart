@@ -70,23 +70,11 @@ class StuddyWidgetController {
   String _widgetUrl = '';
   html.IFrameElement? _iframe;
 
-  Function(Map<String, dynamic>)? onAuthenticationResponse;
-  Function(Map<String, dynamic>)? onWidgetDisplayed;
-  Function(Map<String, dynamic>)? onWidgetHidden;
-  Function(Map<String, dynamic>)? onWidgetEnlarged;
-  Function(Map<String, dynamic>)? onWidgetMinimized;
-
-
   static Map<String, dynamic>? _latestAuthResponse;
   static final _authResponseNotifier = StreamController<Map<String, dynamic>>.broadcast();
   static Stream<Map<String, dynamic>> get authResponseStream => _authResponseNotifier.stream;
 
   StuddyWidgetController({
-    this.onAuthenticationResponse,
-    this.onWidgetDisplayed,
-    this.onWidgetHidden,
-    this.onWidgetEnlarged,
-    this.onWidgetMinimized,
     required String widgetUrl,
   }) {
     _widgetUrl = widgetUrl;
@@ -172,9 +160,6 @@ class StuddyWidgetController {
         }
 
         completer.complete(payload);
-        if (onAuthenticationResponse != null) {
-          onAuthenticationResponse!(payload);
-        }
       }
     };
     

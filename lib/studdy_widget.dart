@@ -26,31 +26,19 @@ class StuddyWidget extends StatefulWidget {
   }
   static platform.StuddyWidgetController? _instance;
   
-  // Optional callbacks
-  final Function(Map<String, dynamic>)? onAuthenticationResponse;
-  final Function(Map<String, dynamic>)? onWidgetDisplayed;
-  final Function(Map<String, dynamic>)? onWidgetHidden;
-  final Function(Map<String, dynamic>)? onWidgetEnlarged;
-  final Function(Map<String, dynamic>)? onWidgetMinimized;
-  
   // Optional size parameters
   final double? width;
   final double? height;
   
-  /// Creates a StuddyWidget with optional callbacks and dimensions
+  /// Creates a StuddyWidget with optional dimensions
   const StuddyWidget({
     Key? key,
-    this.onAuthenticationResponse,
-    this.onWidgetDisplayed,
-    this.onWidgetHidden,
-    this.onWidgetEnlarged,
-    this.onWidgetMinimized,
     this.width,
     this.height,
   }) : super(key: key);
   
   /// Initialize the widget with a custom URL (call before creating widget)
-  static void initialize({String widgetUrl = 'https://pr-482-widget.dev.studdy.ai'}) {
+  static void initialize() {
     StuddyWidget.widgetUrl = widgetUrl;
     // Reset the controller so it will be recreated with the new URL
     _instance = platform.StuddyWidgetController(
@@ -109,28 +97,6 @@ class StuddyWidget extends StatefulWidget {
 }
 
 class _StuddyWidgetState extends State<StuddyWidget> {
-  @override
-  void initState() {
-    super.initState();
-    
-    // Set callbacks if provided
-    if (widget.onAuthenticationResponse != null) {
-      StuddyWidget._controller.onAuthenticationResponse = widget.onAuthenticationResponse;
-    }
-    if (widget.onWidgetDisplayed != null) {
-      StuddyWidget._controller.onWidgetDisplayed = widget.onWidgetDisplayed;
-    }
-    if (widget.onWidgetHidden != null) {
-      StuddyWidget._controller.onWidgetHidden = widget.onWidgetHidden;
-    }
-    if (widget.onWidgetEnlarged != null) {
-      StuddyWidget._controller.onWidgetEnlarged = widget.onWidgetEnlarged;
-    }
-    if (widget.onWidgetMinimized != null) {
-      StuddyWidget._controller.onWidgetMinimized = widget.onWidgetMinimized;
-    }
-  }
-  
   @override
   Widget build(BuildContext context) {
     // The actual implementation is delegated to the platform-specific file

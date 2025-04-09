@@ -80,11 +80,6 @@ class StuddyWidgetController {
   Function(Map<String, dynamic>)? onWidgetMinimized;
   
   StuddyWidgetController({
-    this.onAuthenticationResponse,
-    this.onWidgetDisplayed,
-    this.onWidgetHidden,
-    this.onWidgetEnlarged,
-    this.onWidgetMinimized,
     required String widgetUrl,
   }) {
     _widgetUrl = widgetUrl;
