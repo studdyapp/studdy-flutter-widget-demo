@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 // Import the platform-specific implementations
-import 'web-studdy_widget.dart' if (dart.library.io) 'mobile-studdy_widget.dart' as platform;
+import 'platform/web-studdy_widget.dart' if (dart.library.io) 'platform/mobile-studdy_widget.dart' as platform;
+
+// Import shared models
+import 'utils/widget_models.dart';
 
 // Export the data models
-export 'web-studdy_widget.dart' if (dart.library.io) 'mobile-studdy_widget.dart'
-    show WidgetAuthRequest, PageData;
+export 'utils/widget_models.dart';
 
 /// Main wrapper for the StuddyWidget that provides an easy-to-use API
 /// and handles platform-specific implementation details
@@ -48,12 +50,12 @@ class StuddyWidget extends StatefulWidget {
   }
   
   /// Authenticate with the Studdy platform
-  static Future<Map<String, dynamic>> authenticate(platform.WidgetAuthRequest authRequest) {
+  static Future<Map<String, dynamic>> authenticate(WidgetAuthRequest authRequest) {
     return _controller.authenticate(authRequest);
   }
   
   /// Set the page data for context-aware assistance
-  static Map<String, dynamic> setPageData(platform.PageData pageData) {
+  static Map<String, dynamic> setPageData(PageData pageData) {
     return _controller.setPageData(pageData);
   }
   

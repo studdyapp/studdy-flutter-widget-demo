@@ -2,66 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'dart:convert';
 import 'dart:async';
-
-class WidgetAuthRequest {
-  final String tenantId;
-  final String authMethod;
-  final Map<String, dynamic>? authData;
-  final String? jwt;
-  final String? version;
-
-  WidgetAuthRequest({
-    required this.tenantId,
-    required this.authMethod,
-    this.authData,
-    this.jwt,
-    this.version = "1.0",
-  });
-
-  Map<String, dynamic> toJson() {
-    final Map<String, dynamic> json = {
-      'tenantId': tenantId,
-      'authMethod': authMethod,
-      'version': version,
-    };
-    
-    // Add jwt if it exists
-    if (jwt != null) {
-      json['jwt'] = jwt;
-    }
-    
-    // Add all authData entries if they exist
-    if (authData != null) {
-      json.addAll(authData!);
-    }
-    
-    return json;
-  }
-}
-
-class PageData {
-  final List<Map<String, dynamic>> problems;
-  final String? targetLocale;
-
-  PageData({required this.problems, this.targetLocale});
-
-  Map<String, dynamic> toJson() {
-    return {
-      'problems': problems,
-      if (targetLocale != null) 'targetLocale': targetLocale,
-    };
-  }
-}
-
-const int DEFAULT_ZINDEX = 9999;
-const String DEFAULT_POSITION = 'right';
-const double MINIMIZED_WIDTH = 120.0;
-const double MINIMIZED_HEIGHT = 120.0;
-const double ENLARGED_WIDTH_PERCENTAGE = 0.7;
-const double ENLARGED_HEIGHT_PERCENTAGE = 2.4;
-const double DEFAULT_WIDTH = 400.0;
-const double DEFAULT_HEIGHT = 600.0;
-
+import '../utils/widget_models.dart';
+import '../utils/widget_constants.dart';
 
 // Mobile StuddyWidget class that can be used for controlling the StuddyWidget
 class StuddyWidgetController {
@@ -252,8 +194,8 @@ class _StuddyWidgetState extends State<StuddyWidget> {
   
   // State variables
   bool _isVisible = true;
-  double _currentWidth = DEFAULT_WIDTH;
-  double _currentHeight = DEFAULT_HEIGHT;
+  double _currentWidth = MOBILE_DEFAULT_WIDTH;
+  double _currentHeight = MOBILE_DEFAULT_HEIGHT;
   
   @override
   void initState() {
@@ -324,15 +266,15 @@ class _StuddyWidgetState extends State<StuddyWidget> {
           if (type == 'WIDGET_ENLARGED') {
             setState(() {
               final screenSize = MediaQuery.of(context).size;
-              _currentWidth = screenSize.width * ENLARGED_WIDTH_PERCENTAGE;
-              _currentHeight = screenSize.height * ENLARGED_HEIGHT_PERCENTAGE;
+              _currentWidth = screenSize.width * MOBILE_ENLARGED_WIDTH_PERCENTAGE;
+              _currentHeight = screenSize.height * MOBILE_ENLARGED_HEIGHT_PERCENTAGE;
             });
           }
 
           if(type == 'WIDGET_MINIMIZED') {
             setState(() {
-              _currentWidth = MINIMIZED_WIDTH;
-              _currentHeight = MINIMIZED_HEIGHT;
+              _currentWidth = MOBILE_MINIMIZED_WIDTH;
+              _currentHeight = MOBILE_MINIMIZED_HEIGHT;
             });
           }
         },
@@ -376,11 +318,11 @@ class _StuddyWidgetState extends State<StuddyWidget> {
     // Choose the correct widget based on state
     Widget contentWidget;
 
-    if (_currentWidth == MINIMIZED_WIDTH) {
+    if (_currentWidth == MOBILE_MINIMIZED_WIDTH) {
       // MINIMIZED STATE
       contentWidget = SizedBox(
-        width: MINIMIZED_WIDTH,
-        height: MINIMIZED_HEIGHT,
+        width: MOBILE_MINIMIZED_WIDTH,
+        height: MOBILE_MINIMIZED_HEIGHT,
         child: WebViewWidget(controller: _webViewController),
       );
     } else {
@@ -388,11 +330,11 @@ class _StuddyWidgetState extends State<StuddyWidget> {
       final bool isEnlarged = _currentWidth >= screenSize.width * 0.8;
       
       final double targetWidth = isEnlarged 
-          ? screenSize.width * ENLARGED_WIDTH_PERCENTAGE
+          ? screenSize.width * MOBILE_ENLARGED_WIDTH_PERCENTAGE
           : _currentWidth;
       
       final double targetHeight = isEnlarged 
-          ? screenSize.height * ENLARGED_HEIGHT_PERCENTAGE
+          ? screenSize.height * MOBILE_ENLARGED_HEIGHT_PERCENTAGE
           : _currentHeight;
       
       contentWidget = Container(

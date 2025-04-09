@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:webview_flutter_web/webview_flutter_web.dart';
 import 'dart:async';
+import '../utils/widget_models.dart';
+import '../utils/widget_constants.dart';
 
 // Replace dart:ui with dart:ui_web for platformViewRegistry
 // ignore: avoid_web_libraries_in_flutter
@@ -11,58 +13,6 @@ import 'dart:ui_web' as ui_web;
 
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html; // for iframe
-
-class WidgetAuthRequest {
-  final String tenantId;
-  final String authMethod;
-  final Map<String, dynamic>? authData;
-  final String? jwt;
-  final String? version;
-
-  WidgetAuthRequest({
-    required this.tenantId,
-    required this.authMethod,
-    this.authData,
-    this.jwt,
-    this.version = "1.0",
-  });
-
-  Map<String, dynamic> toJson() {
-    final Map<String, dynamic> json = {
-      'tenantId': tenantId,
-      'authMethod': authMethod,
-      'version': version,
-    };
-    if (jwt != null) json['jwt'] = jwt;
-    if (authData != null) json.addAll(authData!);
-    return json;
-  }
-}
-
-class PageData {
-  final List<Map<String, dynamic>> problems;
-  final String? targetLocale;
-
-  PageData({required this.problems, this.targetLocale});
-
-  Map<String, dynamic> toJson() {
-    return {
-      'problems': problems,
-      if (targetLocale != null) 'targetLocale': targetLocale,
-    };
-  }
-}
-
-// Constants for the StuddyWidget
-const String WIDGET_MAX_HEIGHT = '95%';
-const String WIDGET_MAX_WIDTH = '60%';
-const String MINIMIZED_WIDGET_HEIGHT = '120px';
-const String MINIMIZED_WIDGET_WIDTH = '120px';
-const String ENLARGED_WIDGET_HEIGHT = '95%';
-const String ENLARGED_WIDGET_WIDTH = '464px';
-const String WIDGET_OFFSET = '10px';
-const int DEFAULT_ZINDEX = 9999;
-const String DEFAULT_POSITION = 'right';
 
 class StuddyWidgetController {
   late WebViewController controller;
@@ -150,8 +100,8 @@ class StuddyWidgetController {
           }
           
           if (publicConfigData.containsKey('defaultWidgetPosition')) {
-            _iframe!.style.left = publicConfigData['defaultWidgetPosition'] == 'left' ? WIDGET_OFFSET : 'auto';
-            _iframe!.style.right = publicConfigData['defaultWidgetPosition'] == 'right' ? WIDGET_OFFSET : 'auto';
+            _iframe!.style.left = publicConfigData['defaultWidgetPosition'] == 'left' ? WEB_WIDGET_OFFSET : 'auto';
+            _iframe!.style.right = publicConfigData['defaultWidgetPosition'] == 'right' ? WEB_WIDGET_OFFSET : 'auto';
           }
           
           if (publicConfigData.containsKey('displayOnAuth') && publicConfigData['displayOnAuth'] == true) {
@@ -212,8 +162,8 @@ class StuddyWidgetController {
     _sendMessageToWidget('ENLARGE_WIDGET', {'screen': screen ?? 'solver'});
     _logEvent('Widget enlarged to ${screen ?? "solver"} screen');
     if (_iframe != null) {
-      _iframe!.style.width = ENLARGED_WIDGET_WIDTH;
-      _iframe!.style.height = ENLARGED_WIDGET_HEIGHT;
+      _iframe!.style.width = WEB_ENLARGED_WIDGET_WIDTH;
+      _iframe!.style.height = WEB_ENLARGED_WIDGET_HEIGHT;
     }
     return {'success': true};
   }
@@ -222,8 +172,8 @@ class StuddyWidgetController {
     _sendMessageToWidget('MINIMIZE_WIDGET');
     _logEvent('Widget minimized');
     if (_iframe != null) {
-      _iframe!.style.width = MINIMIZED_WIDGET_WIDTH;
-      _iframe!.style.height = MINIMIZED_WIDGET_HEIGHT;
+      _iframe!.style.width = WEB_MINIMIZED_WIDGET_WIDTH;
+      _iframe!.style.height = WEB_MINIMIZED_WIDGET_HEIGHT;
     }
     return {'success': true};
   }
@@ -232,8 +182,8 @@ class StuddyWidgetController {
     _sendMessageToWidget('SET_WIDGET_POSITION', {'position': position});
     _logEvent('Widget position set to $position');
     if (_iframe != null) {
-      _iframe!.style.left = position == 'left' ? WIDGET_OFFSET : 'auto';
-      _iframe!.style.right = position == 'right' ? WIDGET_OFFSET : 'auto';
+      _iframe!.style.left = position == 'left' ? WEB_WIDGET_OFFSET : 'auto';
+      _iframe!.style.right = position == 'right' ? WEB_WIDGET_OFFSET : 'auto';
     }
     return {'success': true};
   }
@@ -302,13 +252,13 @@ class _StuddyWidgetState extends State<StuddyWidget> {
           ..src = widget.controller._widgetUrl
           ..style.border = 'none'
           ..style.position = 'fixed'
-          ..style.bottom = WIDGET_OFFSET
-          ..style.right = DEFAULT_POSITION == 'right' ? WIDGET_OFFSET : 'auto'
-          ..style.left = DEFAULT_POSITION == 'left' ? WIDGET_OFFSET : 'auto'
-          ..style.width = MINIMIZED_WIDGET_WIDTH
-          ..style.height = MINIMIZED_WIDGET_HEIGHT
-          ..style.maxHeight = WIDGET_MAX_HEIGHT
-          ..style.maxWidth = WIDGET_MAX_WIDTH
+          ..style.bottom = WEB_WIDGET_OFFSET
+          ..style.right = DEFAULT_POSITION == 'right' ? WEB_WIDGET_OFFSET : 'auto'
+          ..style.left = DEFAULT_POSITION == 'left' ? WEB_WIDGET_OFFSET : 'auto'
+          ..style.width = WEB_MINIMIZED_WIDGET_WIDTH
+          ..style.height = WEB_MINIMIZED_WIDGET_HEIGHT
+          ..style.maxHeight = WEB_WIDGET_MAX_HEIGHT
+          ..style.maxWidth = WEB_WIDGET_MAX_WIDTH
           ..style.zIndex = DEFAULT_ZINDEX.toString()
           ..style.display = 'none'  // Hidden initially until authenticated
           ..allow = 'microphone; camera'
@@ -334,13 +284,13 @@ class _StuddyWidgetState extends State<StuddyWidget> {
               
               switch (type) {
                 case 'WIDGET_MINIMIZED':
-                  iframe.style.width = MINIMIZED_WIDGET_WIDTH;
-                  iframe.style.height = MINIMIZED_WIDGET_HEIGHT;
+                  iframe.style.width = WEB_MINIMIZED_WIDGET_WIDTH;
+                  iframe.style.height = WEB_MINIMIZED_WIDGET_HEIGHT;
                   break;
                   
                 case 'WIDGET_ENLARGED':
-                  iframe.style.width = ENLARGED_WIDGET_WIDTH;
-                  iframe.style.height = ENLARGED_WIDGET_HEIGHT;
+                  iframe.style.width = WEB_ENLARGED_WIDGET_WIDTH;
+                  iframe.style.height = WEB_ENLARGED_WIDGET_HEIGHT;
                   break;
                   
                 case 'WIDGET_DISPLAYED':
