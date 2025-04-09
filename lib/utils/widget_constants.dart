@@ -1,4 +1,5 @@
 /// Constants for Mobile StuddyWidget
+/// values can be adjusted to fit the needs of the project (ideally not tampered with)
 const int DEFAULT_ZINDEX = 9999;
 const String DEFAULT_POSITION = 'right';
 

@@ -1,3 +1,6 @@
+//Not to be tampered with
+//---Contains the core classes for the Studdy Widget
+
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
 

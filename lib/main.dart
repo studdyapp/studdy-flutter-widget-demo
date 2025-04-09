@@ -1,3 +1,6 @@
+//Example implementation of the Studdy Widget
+//---Works for both mobile and web
+
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:developer';
@@ -6,7 +9,6 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
-import 'utils/widget_models.dart';
 
 import 'package:webview_flutter_web/webview_flutter_web.dart'
     if (dart.library.io) 'stub_web_package.dart';
@@ -50,6 +52,8 @@ class MainApp extends StatelessWidget {
   }
 }
 
+
+// Control panel to allow for easy testing of the Studdy Widget
 class StuddyWidgetControlPanel extends StatefulWidget {
   const StuddyWidgetControlPanel({super.key});
 
@@ -287,41 +291,91 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
                   ),
                   ElevatedButton(
                     onPressed: () {
-                      final response = StuddyWidget.display();
-                      log('Widget display command sent');
-                      log('Response: ${json.encode(response)}');
+                      try {
+                        final response = StuddyWidget.display();
+                        log('Widget display command sent');
+                        log('Response: ${json.encode(response)}');
+                      } catch (e) {
+                        log('Error displaying widget: $e');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
                     },
                     child: const Text('Display')
                   ),
                   ElevatedButton(
                     onPressed: () {
-                      final response = StuddyWidget.hide();
-                      log('Widget hide command sent');
-                      log('Response: ${json.encode(response)}');
+                      try {
+                        final response = StuddyWidget.hide();
+                        log('Widget hide command sent');
+                        log('Response: ${json.encode(response)}');
+                      } catch (e) {
+                        log('Error hiding widget: $e');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
                     },
                     child: const Text('Hide')
                   ),
                   ElevatedButton(
                     onPressed: () {
-                      final response = StuddyWidget.enlarge('solver');
-                      log('Widget enlarge (solver) command sent');
-                      log('Response: ${json.encode(response)}');
+                      try {
+                        final response = StuddyWidget.enlarge('solver');
+                        log('Widget enlarge (solver) command sent');
+                        log('Response: ${json.encode(response)}');
+                      } catch (e) {
+                        log('Error enlarging widget: $e');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
                     },
                     child: const Text('Enlarge (Solver)')
                   ),
                   ElevatedButton(
                     onPressed: () {
-                      final response = StuddyWidget.enlarge('tutor');
-                      log('Widget enlarge (tutor) command sent');
-                      log('Response: ${json.encode(response)}');
+                      try {
+                        final response = StuddyWidget.enlarge('tutor');
+                        log('Widget enlarge (tutor) command sent');
+                        log('Response: ${json.encode(response)}');
+                      } catch (e) {
+                        log('Error enlarging widget: $e');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
                     },
                     child: const Text('Enlarge (Tutor)')
                   ),
                   ElevatedButton(
                     onPressed: () {
-                      final response = StuddyWidget.minimize();
-                      log('Widget minimize command sent');
-                      log('Response: ${json.encode(response)}');
+                      try {
+                        final response = StuddyWidget.minimize();
+                        log('Widget minimize command sent');
+                        log('Response: ${json.encode(response)}');
+                      } catch (e) {
+                        log('Error minimizing widget: $e');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
                     },
                     child: const Text('Minimize')
                   ),

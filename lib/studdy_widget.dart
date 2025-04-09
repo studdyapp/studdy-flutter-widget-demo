@@ -1,3 +1,5 @@
+//Not to be tampered with
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
@@ -13,13 +15,16 @@ export 'utils/widget_models.dart';
 /// Main wrapper for the StuddyWidget that provides an easy-to-use API
 /// and handles platform-specific implementation details
 class StuddyWidget extends StatefulWidget {
-  // Widget URL - Public but only modified through initialize()
-  static String widgetUrl = 'https://pr-482-widget.dev.studdy.ai';
+  // Widget URL
+  static String widgetUrl = 'https://pr-482-widget.dev.studdy.ai'; // TODO: Change this to https://widget.studdy.ai when ready
   
   // Initialization status
   static bool _initialized = false;
   
-  // Singleton controller instance - lazily initialized
+  // Widget state tracking
+  static bool _isAuthenticated = false;
+  static bool _isPageDataSet = false;
+  
   static platform.StuddyWidgetController get _controller {
     _instance ??= platform.StuddyWidgetController(
       widgetUrl: widgetUrl,
@@ -39,7 +44,6 @@ class StuddyWidget extends StatefulWidget {
     this.height,
   }) : super(key: key);
   
-  /// Initialize the widget with a custom URL (call before creating widget)
   static void initialize() {
     StuddyWidget.widgetUrl = widgetUrl;
     // Reset the controller so it will be recreated with the new URL
@@ -49,33 +53,63 @@ class StuddyWidget extends StatefulWidget {
     _initialized = true;
   }
   
+  /// Validate widget state before performing actions
+  static void _validateWidgetState(String action) {
+    if (!_isAuthenticated || !_isPageDataSet) {
+      String errorMessage;
+      if (!_isAuthenticated && !_isPageDataSet) {
+        errorMessage = 'Authentication and page data must be set before the widget can be $action';
+      } else if (!_isAuthenticated) {
+        errorMessage = 'Authentication must be completed before the widget can be $action';
+      } else {
+        errorMessage = 'Page data must be set before the widget can be $action';
+      }
+      
+      throw WidgetDataException(errorMessage);
+    }
+  }
+  
   /// Authenticate with the Studdy platform
-  static Future<Map<String, dynamic>> authenticate(WidgetAuthRequest authRequest) {
-    return _controller.authenticate(authRequest);
+  static Future<Map<String, dynamic>> authenticate(WidgetAuthRequest authRequest) async {
+    final response = await _controller.authenticate(authRequest);
+    // Update authentication state based on response
+    _isAuthenticated = response['success'] == true;
+    return response;
   }
   
   /// Set the page data for context-aware assistance
   static Map<String, dynamic> setPageData(PageData pageData) {
-    return _controller.setPageData(pageData);
+    final response = _controller.setPageData(pageData);
+    // Update page data state
+    _isPageDataSet = response['success'] == true;
+    return response;
   }
   
   /// Display the widget
   static Map<String, dynamic> display() {
+    // Validate widget is ready to be displayed
+    _validateWidgetState('displayed');
     return _controller.display();
   }
   
   /// Hide the widget
   static Map<String, dynamic> hide() {
+    // Validate widget is ready to be hidden
+    _validateWidgetState('hidden');
     return _controller.hide();
   }
   
   /// Enlarge the widget with optional screen type
   static Map<String, dynamic> enlarge([String? screen]) {
+    // Validate widget is ready to be enlarged
+    _validateWidgetState('enlarged');
     return _controller.enlarge(screen);
   }
   
   /// Minimize the widget
   static Map<String, dynamic> minimize() {
+    // Validate widget is ready to be minimized
+    _validateWidgetState('minimized');
     return _controller.minimize();
   }
   
