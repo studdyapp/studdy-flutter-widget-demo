@@ -58,7 +58,7 @@ class StuddyWidgetControlPanel extends StatefulWidget {
 class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
   late final StuddyWidgetController widgetController;
   String consoleOutput = '';
-  String widgetUrl = 'http://localhost:5173';
+  String widgetUrl = 'https://pr-482-widget.dev.studdy.ai';
 
   @override
   void initState() {
