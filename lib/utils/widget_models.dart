@@ -147,6 +147,21 @@ class FileContent implements Content {
     if (fileData['mime_type'] == null || fileData['mime_type']!.isEmpty) {
       throw PageDataException('mimeType cannot be empty for FileContent');
     }
+    
+    // Validate that mimeType is in the allowed list
+    final allowedMimeTypes = [
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/heic',
+      'image/heif',
+      'image/svg',
+      'image/gif'
+    ];
+    
+    if (!allowedMimeTypes.contains(fileData['mime_type'])) {
+      throw PageDataException('Invalid mimeType: ${fileData['mime_type']}. Allowed types are: ${allowedMimeTypes.join(", ")}');
+    }
   }
 
   @override
