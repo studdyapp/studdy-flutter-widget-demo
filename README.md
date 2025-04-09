@@ -1,69 +1,29 @@
 # Studdy Flutter Widget Demo
 
-> **IMPORTANT**: In the future, the Studdy widget will be hosted on pub.dev for easier integration. For now, to use this widget, you'll need to manually copy the following files into your repo: `mobile-studdy_widget.dart`, `stub_web_package.dart`, `studdy_widget.dart`, and `web-studdy_widget.dart`.
+> **IMPORTANT**: In the future, the Studdy widget will be hosted on pub.dev for easier integration. For now, to use this widget, you'll need to manually copy the necessary files into your project.
 
-This repository demonstrates how to implement the Studdy learning widget in a Flutter application that works seamlessly across both web and mobile platforms using conditional imports.
+This repository demonstrates how to implement the Studdy learning widget in a Flutter application that works seamlessly across both web and mobile platforms.
+
+## Overview
+
+This demo showcases a cross-platform Flutter implementation of the Studdy Widget, allowing developers to integrate interactive educational features in their apps. The implementation automatically adapts to work correctly on both web and mobile platforms.
+
+The main.dart file provides an example control panel where you can test all widget functionality, with proper error handling and validation.
 
 ## Key Features
 
-- **Cross-Platform Implementation**: Uses conditional imports to automatically select the appropriate implementation for web or mobile platforms
-- **WebView Integration**: Demonstrates proper WebView initialization for different platforms
-- **Platform-Specific Code**: Shows how to handle platform-specific features while maintaining a unified API
-- **Interactive Demo**: Includes a control panel to test all widget functionality
-
-## How It Works
-
-### Conditional Imports
-
-The core mechanism for platform detection uses Dart's conditional exports:
-
-```dart
-// studdy_widget.dart
-export 'web-studdy_widget.dart' if (dart.library.io) 'mobile-studdy_widget.dart';
-```
-
-This automatically exports the web implementation when running in a browser context, and the mobile implementation when running on iOS, Android, or other mobile platforms.
-
-### Platform-Specific Initialization
-
-The main application initializes the WebView differently based on the platform:
-
-```dart
-if (kIsWeb) {
-  // Web-specific initialization
-  WebViewPlatform.instance = WebWebViewPlatform();
-} else {
-  // Mobile-specific initialization
-  late final PlatformWebViewControllerCreationParams params;
-  if (defaultTargetPlatform == TargetPlatform.android) {
-    params = AndroidWebViewControllerCreationParams();
-  } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-    params = WebKitWebViewControllerCreationParams();
-  } else {
-    params = const PlatformWebViewControllerCreationParams();
-  }
-  WebViewController.fromPlatformCreationParams(params);
-}
-```
-
-### Stubbing Web Dependencies for Mobile
-
-For mobile platforms, we provide a stub implementation of web-specific dependencies to prevent compilation errors:
-
-```dart
-// stub_web_package.dart - used only on mobile
-class WebWebViewPlatform implements WebViewPlatform {
-  // Stub implementation
-}
-```
+- **Cross-Platform Support**: Works on both web and mobile (iOS, Android) with a single codebase
+- **Interactive Demo**: Control panel to test authentication, content display, and widget features
+- **Error Handling**: Graceful validation that ensures proper usage sequence (authentication → page data → display)
+- **Responsive Design**: Adapts to different screen sizes while maintaining functionality
 
 ## Project Structure
 
-- **lib/main.dart**: The unified entry point that works for both web and mobile
-- **lib/studdy_widget.dart**: The conditional export hub that selects the right implementation
-- **lib/web-studdy_widget.dart**: Web-specific implementation using dart:html
-- **lib/mobile-studdy_widget.dart**: Mobile-specific implementation
-- **lib/stub_web_package.dart**: Stubs for web dependencies when running on mobile
+- **lib/main.dart**: Example implementation with interactive control panel (free to edit)
+- **lib/studdy_widget.dart**: Main widget API that handles cross-platform compatibility (don't recommend editing)
+- **lib/platform/web-studdy_widget.dart**: Web-specific implementation (don't recommend editing)
+- **lib/platform/mobile-studdy_widget.dart**: Mobile-specific implementation (don't recommend editing)
+- **lib/utils/**: Contains models, constants, and helper functions (don't recommend editing)
 
 ## Getting Started
 
@@ -74,43 +34,28 @@ class WebWebViewPlatform implements WebViewPlatform {
    - For Android: `flutter run -d android`
    - For iOS: `flutter run -d ios`
 
-## Widget API Reference
+## Using the Widget
 
-The StuddyWidgetController provides a unified API for interacting with the widget:
+To integrate the Studdy Widget in your own Flutter application, you'll need to:
 
-| Method | Description | Parameters |
-|--------|-------------|------------|
-| `authenticate(WidgetAuthRequest)` | Authenticate with the Studdy platform | `WidgetAuthRequest` object with `tenantId` and `authMethod` |
-| `display()` | Show the widget | None |
-| `hide()` | Hide the widget | None |
-| `enlarge([String?])` | Open the widget in full view | Optional screen name (`'solver'` or `'tutor'`) |
-| `minimize()` | Minimize the widget | None |
-| `setWidgetPosition(String)` | Set widget position | `'right'` or `'left'` |
-| `setZIndex(int)` | Control widget layer | Z-index value |
-| `setPageData(PageData)` | Set the educational content | `PageData` object with problems and optional locale |
-| `setTargetLocale(String)` | Set the language locale | Locale code (e.g., `'en-US'`) |
+1. Copy the necessary files (see repository structure)
+2. Import the widget in your application
+3. Follow the authentication and content setting sequence
 
-### Authentication Example
+### Basic Integration Example
 
 ```dart
-// Simple anonymous authentication
-widgetController.authenticate(WidgetAuthRequest(
-  tenantId: 'YOUR_TENANT_ID',
-  authMethod: 'anonymous',
-));
+import 'package:your_app/studdy_widget.dart';
 
-// JWT-based authentication
-widgetController.authenticate(WidgetAuthRequest(
+// 1. Authenticate
+await StuddyWidget.authenticate(WidgetAuthRequest(
   tenantId: 'YOUR_TENANT_ID',
   authMethod: 'jwt',
   jwt: 'YOUR_JWT_TOKEN',
 ));
-```
 
-### Setting Problem Data
-
-```dart
-widgetController.setPageData(PageData(
+// 2. Set page data
+StuddyWidget.setPageData(PageData(
   problems: [
     {
       'problemId': 'prob-123',
@@ -129,10 +74,27 @@ widgetController.setPageData(PageData(
   ],
   targetLocale: 'en-US'
 ));
+
+// 3. Display the widget
+StuddyWidget.display();
 ```
 
-## Notes for Developers
+## Widget API Reference
 
-- Test on various different screen sizes to ensure consistent behavior
-- Be aware of platform capabilities and provide appropriate fallbacks when needed
+| Method | Description | Required Authentication | Required Page Data |
+|--------|-------------|-------------------------|-------------------|
+| `authenticate(WidgetAuthRequest)` | Authenticate with the Studdy platform | No | No |
+| `setPageData(PageData)` | Set the educational content | No | No |
+| `display()` | Show the widget | Yes | Yes |
+| `hide()` | Hide the widget | Yes | Yes |
+| `enlarge([String?])` | Open the widget in full view | Yes | Yes |
+| `minimize()` | Minimize the widget | Yes | Yes |
+| `setWidgetPosition(String)` | Set widget position (left/right) | No | No |
+| `setZIndex(int)` | Control widget layer | No | No |
+| `setTargetLocale(String)` | Set the language locale | No | No |
+
+## Notes for Implementation
+
+- Authentication and page data must be set before displaying, enlarging, minimizing, or hiding the widget
+- The widget handles proper error feedback when methods are called out of sequence
 - For detailed problem representation and metadata format, refer to the [API documentation](https://studdy.notion.site/Studdy-Widget-Documentation-1be5d54640d3801ea6c6f0db84cfba4a)
