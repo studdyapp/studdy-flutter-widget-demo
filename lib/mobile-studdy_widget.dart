@@ -55,6 +55,12 @@ class PageData {
 
 const int DEFAULT_ZINDEX = 9999;
 const String DEFAULT_POSITION = 'right';
+const double MINIMIZED_WIDTH = 120.0;
+const double MINIMIZED_HEIGHT = 120.0;
+const double ENLARGED_WIDTH_PERCENTAGE = 0.7;
+const double ENLARGED_HEIGHT_PERCENTAGE = 2.4;
+const double DEFAULT_WIDTH = 400.0;
+const double DEFAULT_HEIGHT = 600.0;
 
 
 // Mobile StuddyWidget class that can be used for controlling the StuddyWidget
@@ -243,12 +249,6 @@ class _StuddyWidgetState extends State<StuddyWidget> {
   late WebViewController _webViewController;
   
   // VARIABLES FOR ADJUSTING SIZING
-  static const double MINIMIZED_WIDTH = 120.0;
-  static const double MINIMIZED_HEIGHT = 120.0;
-  static const double ENLARGED_WIDTH_PERCENTAGE = 0.7;
-  static const double ENLARGED_HEIGHT_PERCENTAGE = 2.4;
-  static const double DEFAULT_WIDTH = 400.0;
-  static const double DEFAULT_HEIGHT = 600.0;
   
   // State variables
   bool _isVisible = true;
