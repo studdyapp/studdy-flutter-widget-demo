@@ -11,7 +11,7 @@ import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 import 'package:webview_flutter_web/webview_flutter_web.dart'
-    if (dart.library.io) 'stub_web_package.dart';
+    if (dart.library.io) 'platform/stub_web_package.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

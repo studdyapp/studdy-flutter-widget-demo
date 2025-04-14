@@ -16,7 +16,7 @@ export 'utils/widget_models.dart';
 /// and handles platform-specific implementation details
 class StuddyWidget extends StatefulWidget {
   // Widget URL
-  static String widgetUrl = 'https://pr-482-widget.dev.studdy.ai'; // TODO: Change this to https://widget.studdy.ai when ready
+  static String widgetUrl = 'https://widget.dev.studdy.ai'; // TODO: Change this to https://widget.studdy.ai when ready
   
   // Initialization status
   static bool _initialized = false;
