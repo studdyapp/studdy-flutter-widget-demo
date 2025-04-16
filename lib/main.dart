@@ -13,6 +13,9 @@ import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, Tar
 import 'package:webview_flutter_web/webview_flutter_web.dart'
     if (dart.library.io) 'platform/stub_web_package.dart';
 
+// EXAMPLE IMPLEMENTAION OF HOW ONE SPECIFIES A CUSTOM WIDGET URL
+const STUDDY_WIDGET_URL = 'https://widget.studdy.ai';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -426,7 +429,7 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
     );
 
     Widget displayArea = Expanded(
-      child: StuddyWidget(customWidgetUrl: 'https://widget.studdy.ai'),
+      child: StuddyWidget(customWidgetUrl: STUDDY_WIDGET_URL), //note: customWidgetUrl is optional, if not provided, the https://widget.studdy.ai url will be used
     );
 
     return Scaffold(
