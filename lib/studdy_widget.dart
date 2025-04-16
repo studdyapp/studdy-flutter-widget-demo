@@ -15,42 +15,68 @@ export 'utils/widget_models.dart';
 /// Main wrapper for the StuddyWidget that provides an easy-to-use API
 /// and handles platform-specific implementation details
 class StuddyWidget extends StatefulWidget {
-  // Widget URL
-  static String widgetUrl = 'https://widget.dev.studdy.ai'; // TODO: Change this to https://widget.studdy.ai when ready
-  
-  // Initialization status
-  static bool _initialized = false;
+  // Default widget URL
+  static String defaultWidgetUrl = 'https://widget.studdy.ai';
   
   // Widget state tracking
   static bool _isAuthenticated = false;
   static bool _isPageDataSet = false;
   
+  final String? customWidgetUrl;
+  
+  // Registry to track all widget instances and their controllers
+  static final Map<String, platform.StuddyWidgetController> _controllerRegistry = {};
+  static String _activeWidgetId = 'default';
+  
+  // Global controller for shared usage
   static platform.StuddyWidgetController get _controller {
-    _instance ??= platform.StuddyWidgetController(
-      widgetUrl: widgetUrl,
-    );
-    return _instance!;
+    if (!_controllerRegistry.containsKey('default')) {
+      _controllerRegistry['default'] = platform.StuddyWidgetController(
+        widgetUrl: defaultWidgetUrl,
+      );
+    }
+    return _controllerRegistry['default']!;
   }
-  static platform.StuddyWidgetController? _instance;
+  
+  static set widgetUrl(String url) {
+    defaultWidgetUrl = url;
+    // Update the default controller
+    _controllerRegistry['default'] = platform.StuddyWidgetController(
+      widgetUrl: url,
+    );
+  }
+  
+  // ID for this specific widget instance
+  final String _widgetId = DateTime.now().millisecondsSinceEpoch.toString();
   
   // Optional size parameters
   final double? width;
   final double? height;
   
-  /// Creates a StuddyWidget with optional dimensions
-  const StuddyWidget({
+  StuddyWidget({
     Key? key,
     this.width,
     this.height,
-  }) : super(key: key);
+    this.customWidgetUrl,
+  }) : super(key: key) {
+    if (customWidgetUrl != null) {
+      _controllerRegistry[_widgetId] = platform.StuddyWidgetController(
+        widgetUrl: customWidgetUrl!,
+      );
+    }
+  }
   
-  static void initialize() {
-    StuddyWidget.widgetUrl = widgetUrl;
-    // Reset the controller so it will be recreated with the new URL
-    _instance = platform.StuddyWidgetController(
-      widgetUrl: widgetUrl,
-    );
-    _initialized = true;
+  static void setActiveWidget(StuddyWidget widget) {
+    if (widget.customWidgetUrl != null) {
+      _activeWidgetId = widget._widgetId;
+    } else {
+      _activeWidgetId = 'default';
+    }
+  }
+  
+  /// Get the currently active controller
+  static platform.StuddyWidgetController get activeController {
+    return _controllerRegistry[_activeWidgetId] ?? _controller;
   }
   
   /// Validate widget state before performing actions
@@ -71,7 +97,7 @@ class StuddyWidget extends StatefulWidget {
   
   /// Authenticate with the Studdy platform
   static Future<Map<String, dynamic>> authenticate(WidgetAuthRequest authRequest) async {
-    final response = await _controller.authenticate(authRequest);
+    final response = await activeController.authenticate(authRequest);
     // Update authentication state based on response
     _isAuthenticated = response['success'] == true;
     return response;
@@ -79,7 +105,7 @@ class StuddyWidget extends StatefulWidget {
   
   /// Set the page data for context-aware assistance
   static Map<String, dynamic> setPageData(PageData pageData) {
-    final response = _controller.setPageData(pageData);
+    final response = activeController.setPageData(pageData);
     // Update page data state
     _isPageDataSet = response['success'] == true;
     return response;
@@ -89,28 +115,28 @@ class StuddyWidget extends StatefulWidget {
   static Map<String, dynamic> display() {
     // Validate widget is ready to be displayed
     _validateWidgetState('displayed');
-    return _controller.display();
+    return activeController.display();
   }
   
   /// Hide the widget
   static Map<String, dynamic> hide() {
     // Validate widget is ready to be hidden
     _validateWidgetState('hidden');
-    return _controller.hide();
+    return activeController.hide();
   }
   
   /// Enlarge the widget with optional screen type
   static Map<String, dynamic> enlarge([String? screen]) {
     // Validate widget is ready to be enlarged
     _validateWidgetState('enlarged');
-    return _controller.enlarge(screen);
+    return activeController.enlarge(screen);
   }
   
   /// Minimize the widget
   static Map<String, dynamic> minimize() {
     // Validate widget is ready to be minimized
     _validateWidgetState('minimized');
-    return _controller.minimize();
+    return activeController.minimize();
   }
   
   /// Set the widget position (left or right)
@@ -128,16 +154,49 @@ class StuddyWidget extends StatefulWidget {
     return _controller.setTargetLocale(locale);
   }
   
+  // Create a way to authenticate with custom controllers
+  static Future<Map<String, dynamic>> authenticateWithController(
+    platform.StuddyWidgetController controller, 
+    WidgetAuthRequest authRequest
+  ) async {
+    final response = await controller.authenticate(authRequest);
+    return response;
+  }
+  
+  // Method to set page data with a custom controller
+  static Map<String, dynamic> setPageDataWithController(
+    platform.StuddyWidgetController controller,
+    PageData pageData
+  ) {
+    return controller.setPageData(pageData);
+  }
+  
   @override
   State<StuddyWidget> createState() => _StuddyWidgetState();
 }
 
 class _StuddyWidgetState extends State<StuddyWidget> {
+  late platform.StuddyWidgetController _controller;
+  
+  @override
+  void initState() {
+    super.initState();
+    
+    // Get the controller for this widget
+    if (widget.customWidgetUrl != null) {
+      _controller = StuddyWidget._controllerRegistry[widget._widgetId]!;
+      // Set this as the active widget
+      StuddyWidget.setActiveWidget(widget);
+    } else {
+      _controller = StuddyWidget._controller;
+    }
+  }
+  
   @override
   Widget build(BuildContext context) {
     // The actual implementation is delegated to the platform-specific file
     return platform.StuddyWidget(
-      controller: StuddyWidget._controller,
+      controller: _controller,
       width: widget.width,
       height: widget.height,
     );

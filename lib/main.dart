@@ -425,9 +425,8 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
       ),
     );
 
-    // Widget display area
     Widget displayArea = Expanded(
-      child: StuddyWidget(),
+      child: StuddyWidget(customWidgetUrl: 'https://widget.studdy.ai'),
     );
 
     return Scaffold(
