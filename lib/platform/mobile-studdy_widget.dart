@@ -194,7 +194,7 @@ class _StuddyWidgetState extends State<StuddyWidget> {
   // VARIABLES FOR ADJUSTING SIZING
   
   // State variables
-  bool _isVisible = true;
+  bool _isVisible = false;
   double _currentWidth = MOBILE_DEFAULT_WIDTH;
   double _currentHeight = MOBILE_DEFAULT_HEIGHT;
   
