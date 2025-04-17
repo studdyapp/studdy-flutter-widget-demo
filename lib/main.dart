@@ -1,4 +1,4 @@
-//Example implementation of the Studdy Widget
+//Example implementation of the Studdy Widget - Scrolling Test
 //---Works for both mobile and web
 
 import 'package:flutter/material.dart';
@@ -45,7 +45,7 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Studdy Widget Control Panel',
+      title: 'Studdy Widget Scrolling Test',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -55,8 +55,7 @@ class MainApp extends StatelessWidget {
   }
 }
 
-
-// Control panel to allow for easy testing of the Studdy Widget
+// Scrolling test panel for the Studdy Widget
 class StuddyWidgetControlPanel extends StatefulWidget {
   const StuddyWidgetControlPanel({super.key});
 
@@ -229,40 +228,32 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
     );
   }
 
-  void _setZIndex() {
-    final zIndexController = TextEditingController(text: '2000');
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Set Z-Index'),
-          content: TextField(
-            controller: zIndexController,
-            decoration: const InputDecoration(labelText: 'Z-Index Value'),
-            keyboardType: TextInputType.number,
+  // Creates scrollable content with many items
+  Widget _buildScrollableContent() {
+    return ListView.builder(
+      itemCount: 50,
+      itemBuilder: (context, index) {
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Scrollable Content #${index + 1}',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'This is content to test if scrolling works when the Studdy Widget is displayed. '
+                  'Try scrolling on this area with your cursor on the right side of the screen where the widget appears. '
+                  'Item ${index + 1} of 50.',
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ],
+            ),
           ),
-          actionsAlignment: MainAxisAlignment.start,
-          actions: [
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            ElevatedButton(
-              child: const Text('Set Z-Index'),
-              onPressed: () {
-                try {
-                  final zIndex = int.parse(zIndexController.text);
-                  final response = StuddyWidget.setZIndex(zIndex);
-                  log('Z-Index set to $zIndex');
-                  log('Response: ${json.encode(response)}');
-                  Navigator.of(context).pop();
-                } catch (e) {
-                  log('Error setting Z-Index: $e');
-                }
-              },
-            ),
-          ],
         );
       },
     );
@@ -272,7 +263,7 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
     // Check if the screen width indicates a mobile device (less than 600 pixels)
     final isMobile = MediaQuery.of(context).size.width < 600;
 
-    // Control panel widget to be reused in both layouts
+    // Control panel widget same as the original file
     Widget controlPanel = Container(
       color: Colors.white,
       padding: const EdgeInsets.all(16.0),
@@ -282,131 +273,68 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              child: Wrap(
-                spacing: 8.0,
-                runSpacing: 8.0,
-                alignment: WrapAlignment.start,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ElevatedButton(
-                    onPressed: _authenticate,
-                    child: const Text('Authenticate'),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      try {
-                        final response = StuddyWidget.display();
-                        log('Widget display command sent');
-                        log('Response: ${json.encode(response)}');
-                      } catch (e) {
-                        log('Error displaying widget: $e');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Error: $e'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    },
-                    child: const Text('Display')
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      try {
-                        final response = StuddyWidget.hide();
-                        log('Widget hide command sent');
-                        log('Response: ${json.encode(response)}');
-                      } catch (e) {
-                        log('Error hiding widget: $e');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Error: $e'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    },
-                    child: const Text('Hide')
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      try {
-                        final response = StuddyWidget.enlarge('solver');
-                        log('Widget enlarge (solver) command sent');
-                        log('Response: ${json.encode(response)}');
-                      } catch (e) {
-                        log('Error enlarging widget: $e');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Error: $e'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    },
-                    child: const Text('Enlarge (Solver)')
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      try {
-                        final response = StuddyWidget.enlarge('tutor');
-                        log('Widget enlarge (tutor) command sent');
-                        log('Response: ${json.encode(response)}');
-                      } catch (e) {
-                        log('Error enlarging widget: $e');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Error: $e'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    },
-                    child: const Text('Enlarge (Tutor)')
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      try {
-                        final response = StuddyWidget.minimize();
-                        log('Widget minimize command sent');
-                        log('Response: ${json.encode(response)}');
-                      } catch (e) {
-                        log('Error minimizing widget: $e');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Error: $e'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    },
-                    child: const Text('Minimize')
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      final response = StuddyWidget.setWidgetPosition('right');
-                      log('Widget position (right) command sent');
-                      log('Response: ${json.encode(response)}');
-                    },
-                    child: const Text('Position Right')
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      final response = StuddyWidget.setWidgetPosition('left');
-                      log('Widget position (left) command sent');
-                      log('Response: ${json.encode(response)}');
-                    },
-                    child: const Text('Position Left')
-                  ),
-                  ElevatedButton(
-                    onPressed: _setZIndex,
-                    child: const Text('Set Z-Index'),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
-                  ),
-                  ElevatedButton(
-                    onPressed: _setPageData,
-                    child: const Text('Set Page Data'),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
+                  const Text('Testing Scrolling with Studdy Widget', 
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  
+                  // Basic widget controls - with only the ones we need for testing
+                  Wrap(
+                    spacing: 8.0,
+                    runSpacing: 8.0,
+                    alignment: WrapAlignment.start,
+                    children: [
+                      ElevatedButton(
+                        onPressed: _authenticate,
+                        child: const Text('Authenticate'),
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                      ),
+                      ElevatedButton(
+                        onPressed: _setPageData,
+                        child: const Text('Set Page Data'),
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton(
+                        onPressed: () {
+                          try {
+                            final response = StuddyWidget.display();
+                            log('Widget display command sent');
+                            log('Response: ${json.encode(response)}');
+                          } catch (e) {
+                            log('Error displaying widget: $e');
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Error: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                        child: const Text('Display'),
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          try {
+                            final response = StuddyWidget.hide();
+                            log('Widget hide command sent');
+                            log('Response: ${json.encode(response)}');
+                          } catch (e) {
+                            log('Error hiding widget: $e');
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Error: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                        child: const Text('Hide'),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -414,7 +342,7 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
           ),
           const SizedBox(height: 16),
           Container(
-            height: isMobile ? 100 : 200, // Smaller console on mobile
+            height: isMobile ? 100 : 200,
             decoration: BoxDecoration(
               color: Colors.grey[200],
               borderRadius: BorderRadius.circular(8.0),
@@ -428,32 +356,42 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
       ),
     );
 
-    Widget displayArea = Expanded(
-      child: StuddyWidget(customWidgetUrl: STUDDY_WIDGET_URL), //note: customWidgetUrl is optional, if not provided, the https://widget.studdy.ai url will be used
+    // This layout combines scrollable content with the widget
+    // The widget is placed using the exact same mechanism as main.dart
+    Widget combinedDisplayArea = Expanded(
+      child: Stack(
+        children: [
+          // Scrollable content underneath
+          _buildScrollableContent(),
+          
+          // The StuddyWidget - will be visible when showWidget is true
+          StuddyWidget(customWidgetUrl: STUDDY_WIDGET_URL),
+        ],
+      ),
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Studdy Widget Control Panel')),
+      appBar: AppBar(title: const Text('Studdy Widget Scrolling Test')),
       body: isMobile
           ? Column(
               children: [
-                // Top widget display area for mobile
-                displayArea,
-                // Bottom control panel for mobile (height constrained)
+                // Top control panel for mobile
                 SizedBox(
-                  height: MediaQuery.of(context).size.height * 0.4, // 40% of screen height
+                  height: MediaQuery.of(context).size.height * 0.4, 
                   child: controlPanel,
                 ),
+                // Bottom combined display area
+                combinedDisplayArea,
               ],
             )
           : Row(
               children: [
                 // Left side control panel for web
                 controlPanel,
-                // Right side widget display area for web
-                displayArea,
+                // Right side combined display area
+                combinedDisplayArea,
               ],
             ),
     );
   }
-}
+} 
