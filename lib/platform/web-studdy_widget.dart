@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:webview_flutter_web/webview_flutter_web.dart';
 import 'dart:async';
 import '../utils/widget_models.dart';
@@ -22,7 +21,6 @@ class StuddyWidgetController {
   String _widgetUrl = '';
   html.IFrameElement? _iframe;
 
-  static Map<String, dynamic>? _latestAuthResponse;
   static final _authResponseNotifier = StreamController<Map<String, dynamic>>.broadcast();
   static Stream<Map<String, dynamic>> get authResponseStream => _authResponseNotifier.stream;
 
@@ -31,17 +29,6 @@ class StuddyWidgetController {
   }) {
     _widgetUrl = widgetUrl;
   }
-
-  void initialize(WebViewController webViewController) {
-    try {
-      controller = webViewController;
-      _isInitialized = true;
-      // debugPrint('StuddyWidget: Controller successfully initialized');
-    } catch (e) {
-      // debugPrint('StuddyWidget: Error initializing controller: $e');
-    }
-  }
-
 
   void _logEvent(String message) {
     debugPrint('StuddyWidget: $message');
@@ -57,10 +44,8 @@ class StuddyWidgetController {
       'type': type,
       if (payload != null) 'payload': payload,
     };
-
-    final String jsonMessage = jsonEncode(message);
     
-    if (kIsWeb && _iframe != null) {
+    if (_iframe != null) {
       try {
         // Direct approach - use the iframe reference we already have
         _iframe!.contentWindow?.postMessage(message, '*');
@@ -225,21 +210,20 @@ class StuddyWidget extends StatefulWidget {
 class _StuddyWidgetState extends State<StuddyWidget> {
   late final String viewId;
   html.EventListener? _messageListener;
+  bool _isVisible = false; // Track visibility state
   
   @override
   void initState() {
     super.initState();
     viewId = 'studdy-widget-${DateTime.now().millisecondsSinceEpoch}';
     
-    if (kIsWeb) {
-      _registerViewFactory();
-    }
+    _registerViewFactory();
   }
   
   @override
   void dispose() {
     // Clean up event listener when widget is disposed
-    if (kIsWeb && _messageListener != null) {
+    if (_messageListener != null) {
       html.window.removeEventListener('message', _messageListener!);
       _messageListener = null;
     }
@@ -247,6 +231,7 @@ class _StuddyWidgetState extends State<StuddyWidget> {
   }
   
   void _registerViewFactory() {
+    print('Factory registered');
     ui_web.platformViewRegistry.registerViewFactory(
       viewId,
       (int viewId) {
@@ -286,21 +271,31 @@ class _StuddyWidgetState extends State<StuddyWidget> {
               
               switch (type) {
                 case 'WIDGET_MINIMIZED':
+                  print('WIDGET_MINIMIZED');
                   iframe.style.width = WEB_MINIMIZED_WIDGET_WIDTH;
                   iframe.style.height = WEB_MINIMIZED_WIDGET_HEIGHT;
                   break;
                   
                 case 'WIDGET_ENLARGED':
+                  print('WIDGET_ENLARGED');
                   iframe.style.width = WEB_ENLARGED_WIDGET_WIDTH;
                   iframe.style.height = WEB_ENLARGED_WIDGET_HEIGHT;
                   break;
                   
                 case 'WIDGET_DISPLAYED':
+                  print('WIDGET_DISPLAYED');
                   iframe.style.display = 'block';
+                  setState(() {
+                    _isVisible = true;
+                  });
                   break;
                   
                 case 'WIDGET_HIDDEN':
+                  print('WIDGET_HIDDEN');
                   iframe.style.display = 'none';
+                  setState(() {
+                    _isVisible = false;
+                  });
                   break;
               }
             } catch (e) {
@@ -319,26 +314,8 @@ class _StuddyWidgetState extends State<StuddyWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (kIsWeb) {
-      return HtmlElementView(viewType: viewId);
-    } else {
-      final mobileController = WebViewController();
-
-      mobileController
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..setBackgroundColor(Colors.transparent)
-        ..setNavigationDelegate(
-          NavigationDelegate(
-            onPageFinished: (url) => widget.controller.initialize(mobileController),
-          ),
-        )
-        ..loadRequest(Uri.parse(widget.controller._widgetUrl));
-
-      return SizedBox(
-        width: widget.width ?? 400,
-        height: widget.height ?? 600,
-        child: WebViewWidget(controller: mobileController),
-      );
-    }
+    // Always render the HtmlElementView without any size constraints
+    // Let the iframe control its own visibility and sizing through CSS
+    return HtmlElementView(viewType: viewId);
   }
 }
