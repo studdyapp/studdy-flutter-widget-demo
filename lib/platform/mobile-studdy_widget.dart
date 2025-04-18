@@ -6,6 +6,11 @@ import 'dart:async';
 import '../utils/widget_models.dart';
 import '../utils/widget_constants.dart';
 
+// Add a static position manager similar to the web implementation
+class WidgetPositionManager {
+  static String position = DEFAULT_POSITION;
+}
+
 // Mobile StuddyWidget class that can be used for controlling the StuddyWidget
 class StuddyWidgetController {
   // Static fields for auth response handling
@@ -18,7 +23,6 @@ class StuddyWidgetController {
   String _widgetUrl = '';
   
   // Widget state variables
-  String _position = DEFAULT_POSITION;  // Track the current position
   int _zIndex = DEFAULT_ZINDEX;  // Track the current z-index
   
   
@@ -34,8 +38,8 @@ class StuddyWidgetController {
     _isInitialized = true;
     
     // Send initial configuration to widget if needed
-    if (_position != DEFAULT_POSITION) {
-      _sendMessageToWidget('SET_WIDGET_POSITION', {'position': _position});
+    if (WidgetPositionManager.position != DEFAULT_POSITION) {
+      _sendMessageToWidget('SET_WIDGET_POSITION', {'position': WidgetPositionManager.position});
     }
     
     if (_zIndex != DEFAULT_ZINDEX) {
@@ -129,8 +133,8 @@ class StuddyWidgetController {
       return {'success': false, 'error': 'Position must be "left" or "right"'};
     }
     
-    // Update internal position state
-    _position = position;
+    // Update position in the static manager
+    WidgetPositionManager.position = position;
     
     // Send message to the widget
     _sendMessageToWidget('SET_WIDGET_POSITION', {'position': position});
@@ -237,7 +241,7 @@ class _StuddyWidgetState extends State<StuddyWidget> {
             if (payload is Map && payload.containsKey('position')) {
               final position = payload['position'] as String;
               setState(() {
-                widget.controller._position = position;
+                WidgetPositionManager.position = position;
               });
             }
           }
@@ -345,7 +349,7 @@ class _StuddyWidgetState extends State<StuddyWidget> {
       );
     }
 
-    final position = widget.controller._position;
+    final position = WidgetPositionManager.position;
     return Align(
       alignment: position == 'left' ? Alignment.bottomLeft : Alignment.bottomRight,
       child: Padding(
