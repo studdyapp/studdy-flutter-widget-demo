@@ -404,40 +404,6 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
                     },
                     child: const Text('Enlarge (Tutor)')
                   ),
-                  ElevatedButton(
-                    onPressed: () {
-                      try {
-                        final response = StuddyWidget.minimize();
-                        log('Widget minimize command sent');
-                        log('Response: ${json.encode(response)}');
-                      } catch (e) {
-                        log('Error minimizing widget: $e');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Error: $e'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    },
-                    child: const Text('Minimize')
-                  ),
-                    ElevatedButton(
-                      onPressed: () {
-                        final response = StuddyWidget.setWidgetPosition('right');
-                        log('Widget position (right) command sent');
-                        log('Response: ${json.encode(response)}');
-                      },
-                      child: const Text('Position Right')
-                    ),
-                    ElevatedButton(
-                      onPressed: () {
-                        final response = StuddyWidget.setWidgetPosition('left');
-                        log('Widget position (left) command sent');
-                        log('Response: ${json.encode(response)}');
-                      },
-                      child: const Text('Position Left')
-                    ),
                     ],
                   ),
                 ],
