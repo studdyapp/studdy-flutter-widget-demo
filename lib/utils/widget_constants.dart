@@ -18,4 +18,12 @@ const String WEB_MINIMIZED_WIDGET_HEIGHT = '120px';
 const String WEB_MINIMIZED_WIDGET_WIDTH = '120px';
 const String WEB_ENLARGED_WIDGET_HEIGHT = '95%';
 const String WEB_ENLARGED_WIDGET_WIDTH = '464px';
-const String WEB_WIDGET_OFFSET = '10px'; 
+
+
+const double WEB_MINIMIZED_WIDTH = 120.0;
+const double WEB_MINIMIZED_HEIGHT = 120.0;
+const double WEB_ENLARGED_WIDTH = 500.0;
+const double WEB_ENLARGED_HEIGHT = 1000.0;
+const double WEB_WIDGET_OFFSET = 24.0;
+
+

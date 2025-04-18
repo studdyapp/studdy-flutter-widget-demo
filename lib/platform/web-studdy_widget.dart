@@ -15,6 +15,11 @@ import 'dart:ui_web' as ui_web;
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html; // for iframe
 
+// Central position manager with static access
+class WidgetPositionManager {
+  static String position = 'right';
+}
+
 class StuddyWidgetController {
   late WebViewController controller;
   bool _isInitialized = false;
@@ -56,7 +61,6 @@ class StuddyWidgetController {
     }
   }
 
-
   Future<Map<String, dynamic>> authenticate(WidgetAuthRequest authRequest) async {
     if (!_isInitialized) {
       return {'success': false, 'error': 'Widget not initialized'};
@@ -80,22 +84,6 @@ class StuddyWidgetController {
             ? Map<String, dynamic>.from(payload['publicConfigData'] as Map)
             : <String, dynamic>{};
         
-        // Update iframe styles based on config if it exists
-        if (_iframe != null) {
-          if (publicConfigData.containsKey('defaultZIndex')) {
-            _iframe!.style.zIndex = publicConfigData['defaultZIndex'].toString();
-          }
-          
-          if (publicConfigData.containsKey('defaultWidgetPosition')) {
-            _iframe!.style.left = publicConfigData['defaultWidgetPosition'] == 'left' ? WEB_WIDGET_OFFSET : 'auto';
-            _iframe!.style.right = publicConfigData['defaultWidgetPosition'] == 'right' ? WEB_WIDGET_OFFSET : 'auto';
-          }
-          
-          if (publicConfigData.containsKey('displayOnAuth') && publicConfigData['displayOnAuth'] == true) {
-            _iframe!.style.display = 'block';
-          }
-        }
-
         completer.complete(payload);
       }
     };
@@ -130,57 +118,45 @@ class StuddyWidgetController {
   Map<String, dynamic> display() {
     _sendMessageToWidget('DISPLAY_WIDGET');
     _logEvent('Widget displayed');
-    if (_iframe != null) {
-      _iframe!.style.display = 'block';
-    }
+
     return {'success': true};
   }
 
   Map<String, dynamic> hide() {
     _sendMessageToWidget('HIDE_WIDGET');
     _logEvent('Widget hidden');
-    if (_iframe != null) {
-      _iframe!.style.display = 'none';
-    }
+
     return {'success': true};
   }
 
   Map<String, dynamic> enlarge([String? screen]) {
     _sendMessageToWidget('ENLARGE_WIDGET', {'screen': screen ?? 'solver'});
     _logEvent('Widget enlarged to ${screen ?? "solver"} screen');
-    if (_iframe != null) {
-      _iframe!.style.width = WEB_ENLARGED_WIDGET_WIDTH;
-      _iframe!.style.height = WEB_ENLARGED_WIDGET_HEIGHT;
-    }
+
     return {'success': true};
   }
 
   Map<String, dynamic> minimize() {
     _sendMessageToWidget('MINIMIZE_WIDGET');
     _logEvent('Widget minimized');
-    if (_iframe != null) {
-      _iframe!.style.width = WEB_MINIMIZED_WIDGET_WIDTH;
-      _iframe!.style.height = WEB_MINIMIZED_WIDGET_HEIGHT;
-    }
+
     return {'success': true};
   }
 
   Map<String, dynamic> setWidgetPosition(String position) {
+    // Update the static position directly
+    WidgetPositionManager.position = position;
+    
+    // Still send the message for external compatibility
     _sendMessageToWidget('SET_WIDGET_POSITION', {'position': position});
     _logEvent('Widget position set to $position');
-    if (_iframe != null) {
-      _iframe!.style.left = position == 'left' ? WEB_WIDGET_OFFSET : 'auto';
-      _iframe!.style.right = position == 'right' ? WEB_WIDGET_OFFSET : 'auto';
-    }
+    
     return {'success': true};
   }
 
   Map<String, dynamic> setZIndex(int zIndex) {
     _sendMessageToWidget('SET_Z_INDEX', {'zIndex': zIndex});
     _logEvent('Widget zIndex set to $zIndex');
-    if (_iframe != null) {
-      _iframe!.style.zIndex = zIndex.toString();
-    }
     return {'success': true};
   }
 
@@ -208,21 +184,20 @@ class StuddyWidget extends StatefulWidget {
 }
 
 class _StuddyWidgetState extends State<StuddyWidget> {
-  late final String viewId;
+  final String viewId = 'studdy-widget-iframe';
   html.EventListener? _messageListener;
-  bool _isVisible = false; // Track visibility state
+  bool _isVisible = false;
+  bool _isEnlarged = false;
   
   @override
   void initState() {
     super.initState();
-    viewId = 'studdy-widget-${DateTime.now().millisecondsSinceEpoch}';
-    
     _registerViewFactory();
   }
   
   @override
   void dispose() {
-    // Clean up event listener when widget is disposed
+    // Remove event listener when widget is disposed
     if (_messageListener != null) {
       html.window.removeEventListener('message', _messageListener!);
       _messageListener = null;
@@ -238,16 +213,6 @@ class _StuddyWidgetState extends State<StuddyWidget> {
         final iframe = html.IFrameElement()
           ..src = widget.controller._widgetUrl
           ..style.border = 'none'
-          ..style.position = 'fixed'
-          ..style.bottom = WEB_WIDGET_OFFSET
-          ..style.right = DEFAULT_POSITION == 'right' ? WEB_WIDGET_OFFSET : 'auto'
-          ..style.left = DEFAULT_POSITION == 'left' ? WEB_WIDGET_OFFSET : 'auto'
-          ..style.width = WEB_MINIMIZED_WIDGET_WIDTH
-          ..style.height = WEB_MINIMIZED_WIDGET_HEIGHT
-          ..style.maxHeight = WEB_WIDGET_MAX_HEIGHT
-          ..style.maxWidth = WEB_WIDGET_MAX_WIDTH
-          ..style.zIndex = DEFAULT_ZINDEX.toString()
-          ..style.display = 'none'  // Hidden initially until authenticated
           ..allow = 'microphone; camera'
           ..title = 'Studdy Widget';
         
@@ -272,19 +237,20 @@ class _StuddyWidgetState extends State<StuddyWidget> {
               switch (type) {
                 case 'WIDGET_MINIMIZED':
                   print('WIDGET_MINIMIZED');
-                  iframe.style.width = WEB_MINIMIZED_WIDGET_WIDTH;
-                  iframe.style.height = WEB_MINIMIZED_WIDGET_HEIGHT;
+                  setState(() {
+                    _isEnlarged = false;
+                  });
                   break;
                   
                 case 'WIDGET_ENLARGED':
                   print('WIDGET_ENLARGED');
-                  iframe.style.width = WEB_ENLARGED_WIDGET_WIDTH;
-                  iframe.style.height = WEB_ENLARGED_WIDGET_HEIGHT;
+                  setState(() {
+                    _isEnlarged = true;
+                  });
                   break;
                   
                 case 'WIDGET_DISPLAYED':
                   print('WIDGET_DISPLAYED');
-                  iframe.style.display = 'block';
                   setState(() {
                     _isVisible = true;
                   });
@@ -292,7 +258,6 @@ class _StuddyWidgetState extends State<StuddyWidget> {
                   
                 case 'WIDGET_HIDDEN':
                   print('WIDGET_HIDDEN');
-                  iframe.style.display = 'none';
                   setState(() {
                     _isVisible = false;
                   });
@@ -314,8 +279,22 @@ class _StuddyWidgetState extends State<StuddyWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // Always render the HtmlElementView without any size constraints
-    // Let the iframe control its own visibility and sizing through CSS
-    return HtmlElementView(viewType: viewId);
+    // Calculate width and height based on visibility and size state
+    final double widgetWidth = _isVisible ? (_isEnlarged ? WEB_ENLARGED_WIDTH : WEB_MINIMIZED_WIDTH) : 1;
+    final double widgetHeight = _isVisible ? (_isEnlarged ? WEB_ENLARGED_HEIGHT : WEB_MINIMIZED_HEIGHT) : 1;
+    //regular container
+    return Align(
+      alignment: WidgetPositionManager.position == 'left' ? Alignment.bottomLeft : Alignment.bottomRight,
+      child: Container(
+        width: widgetWidth,
+        height: widgetHeight,
+        margin: EdgeInsets.only(
+          left: WidgetPositionManager.position == 'left' ? WEB_WIDGET_OFFSET : 0,
+          right: WidgetPositionManager.position == 'right' ? WEB_WIDGET_OFFSET : 0,
+          bottom: WEB_WIDGET_OFFSET,
+        ),
+        child: HtmlElementView(viewType: viewId),
+      ),
+    );
   }
 }
