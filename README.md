@@ -47,42 +47,48 @@ To integrate the Studdy Widget in your own Flutter application, you'll need to:
 ```dart
 import 'package:your_app/studdy_widget.dart';
 
-// 1. Authenticate
-await StuddyWidget.authenticate(WidgetAuthRequest(
-  tenantId: 'YOUR_TENANT_ID',
-  authMethod: 'jwt',
-  jwt: 'YOUR_JWT_TOKEN',
-));
+// Check if widget is ready before making API calls
+if (StuddyWidget.isReady()) {
+  // Widget is initialized and ready to receive commands
+  
+  // 1. Authenticate
+  await StuddyWidget.authenticate(WidgetAuthRequest(
+    tenantId: 'YOUR_TENANT_ID',
+    authMethod: 'jwt',
+    jwt: 'YOUR_JWT_TOKEN',
+  ));
 
-// 2. Set page data
-StuddyWidget.setPageData(PageData(
-  problems: [
-    {
-      'problemId': 'prob-123',
-      'referenceTitle': 'Algebra Problem',
-      'problemStatement': [
-        {
-          'text': 'Solve for x: 2x + 3 = 7',
-          'type': 'text'
+  // 2. Set page data
+  StuddyWidget.setPageData(PageData(
+    problems: [
+      {
+        'problemId': 'prob-123',
+        'referenceTitle': 'Algebra Problem',
+        'problemStatement': [
+          {
+            'text': 'Solve for x: 2x + 3 = 7',
+            'type': 'text'
+          }
+        ],
+        'metaData': {
+          'type': 'math',
+          'topic': 'algebra'
         }
-      ],
-      'metaData': {
-        'type': 'math',
-        'topic': 'algebra'
       }
-    }
-  ],
-  targetLocale: 'en-US'
-));
+    ],
+    targetLocale: 'en-US'
+  ));
 
-// 3. Display the widget
-StuddyWidget.display();
+  // 3. Display the widget
+  StuddyWidget.display();
+}
 ```
 
 ## Widget API Reference
 
 | Method | Description | Required Authentication | Required Page Data |
 |--------|-------------|-------------------------|-------------------|
+| `isReady()` | Check if widget is initialized and ready for API calls | No | No |
 | `authenticate(WidgetAuthRequest)` | Authenticate with the Studdy platform | No | No |
 | `setPageData(PageData)` | Set the educational content | No | No |
 | `display()` | Show the widget | Yes | Yes |
@@ -96,5 +102,6 @@ StuddyWidget.display();
 ## Notes for Implementation
 
 - Authentication and page data must be set before displaying, enlarging, minimizing, or hiding the widget
+- Use `isReady()` to check if the widget is fully loaded, especially in slow network conditions
 - The widget handles proper error feedback when methods are called out of sequence
 - For detailed problem representation and metadata format, refer to the [API documentation](https://studdy.notion.site/Studdy-Widget-Documentation-1be5d54640d3801ea6c6f0db84cfba4a)
