@@ -26,6 +26,9 @@ class StuddyWidgetController {
   String _widgetUrl = '';
   html.IFrameElement? _iframe;
 
+  // Public getter for initialization state
+  bool get isInitialized => _isInitialized;
+
   static final _authResponseNotifier = StreamController<Map<String, dynamic>>.broadcast();
   static Stream<Map<String, dynamic>> get authResponseStream => _authResponseNotifier.stream;
 

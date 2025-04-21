@@ -22,6 +22,9 @@ class StuddyWidgetController {
   bool _isInitialized = false;
   String _widgetUrl = '';
   
+  // Public getter for initialization state
+  bool get isInitialized => _isInitialized;
+  
   // Widget state variables
   int _zIndex = DEFAULT_ZINDEX;  // Track the current z-index
   

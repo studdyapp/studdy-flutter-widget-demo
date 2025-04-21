@@ -171,6 +171,13 @@ class StuddyWidget extends StatefulWidget {
     return controller.setPageData(pageData);
   }
   
+  /// Check if the widget is ready for API calls
+  /// Returns true if the underlying controller is initialized and ready to receive commands
+  static bool isReady() {
+    return activeController.isInitialized;
+  }
+
+  
   @override
   State<StuddyWidget> createState() => _StuddyWidgetState();
 }
