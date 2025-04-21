@@ -286,6 +286,27 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
                     runSpacing: 8.0,
                     alignment: WrapAlignment.start,
                     children: [
+                      // Add a new button to check widget readiness
+                      ElevatedButton(
+                        onPressed: () {
+                          final isReady = StuddyWidget.isReady();
+                          log('Widget ready status: $isReady');
+                          
+                          // Show visual feedback
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Widget is ${isReady ? 'READY' : 'NOT READY'}'),
+                              backgroundColor: isReady ? Colors.green : Colors.red,
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                        child: const Text('Check Ready'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.purple,
+                          foregroundColor: Colors.white
+                        ),
+                      ),
                       ElevatedButton(
                         onPressed: _authenticate,
                         child: const Text('Authenticate'),
