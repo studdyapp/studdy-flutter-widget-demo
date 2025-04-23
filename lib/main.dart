@@ -143,11 +143,7 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
             'text': 'Solve for x: 2x + 3 = 7',
             'type': 'text'
           }
-        ],
-        'metaData': {
-          'type': 'math',
-          'topic': 'algebra'
-        }
+        ]
       }
     ]));
     final localeController = TextEditingController(text: 'en-US');

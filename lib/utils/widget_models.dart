@@ -231,7 +231,7 @@ class ProblemObject {
   final List<Content> problemStatement;
   final List<ChoiceOption>? solutionOptions;
   final String? correctAnswerReferenceId;
-  final Map<String, dynamic> metaData;
+  final Map<String, dynamic>? metaData;
 
   ProblemObject({
     required this.problemId,
@@ -239,7 +239,7 @@ class ProblemObject {
     required this.problemStatement,
     this.solutionOptions,
     this.correctAnswerReferenceId,
-    required this.metaData,
+    this.metaData,
   });
 
   void validate() {
@@ -273,7 +273,8 @@ class ProblemObject {
         'solutionOptions': solutionOptions!.map((o) => o.toJson()).toList(),
       if (correctAnswerReferenceId != null) 
         'correctAnswerReferenceId': correctAnswerReferenceId,
-      'metaData': metaData,
+      if (metaData != null)
+        'metaData': metaData,
     };
   }
 }
