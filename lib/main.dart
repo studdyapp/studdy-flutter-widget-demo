@@ -189,11 +189,9 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
                     // Use the helper method to parse and validate JSON
                     pageData = PageData.fromJsonString(jsonData);
                     
-                    // Override targetLocale if provided in UI
                     if (localeController.text.isNotEmpty) {
                       pageData = PageData(
                         problems: pageData.problems,
-                        targetLocale: localeController.text,
                       );
                     }
                   } catch (e) {

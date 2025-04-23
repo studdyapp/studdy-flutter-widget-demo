@@ -75,8 +75,7 @@ if (StuddyWidget.isReady()) {
           'topic': 'algebra'
         }
       }
-    ],
-    targetLocale: 'en-US'
+    ]
   ));
 
   // 3. Display the widget

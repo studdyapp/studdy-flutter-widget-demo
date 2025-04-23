@@ -232,6 +232,7 @@ class ProblemObject {
   final List<ChoiceOption>? solutionOptions;
   final String? correctAnswerReferenceId;
   final Map<String, dynamic>? metaData;
+  final Map<String, List<Content>>? contextModifiers;
 
   ProblemObject({
     required this.problemId,
@@ -240,6 +241,7 @@ class ProblemObject {
     this.solutionOptions,
     this.correctAnswerReferenceId,
     this.metaData,
+    this.contextModifiers,
   });
 
   void validate() {
@@ -262,6 +264,14 @@ class ProblemObject {
         option.validate();
       }
     }
+    
+    if (contextModifiers != null) {
+      contextModifiers!.forEach((key, contentList) {
+        for (final content in contentList) {
+          content.validate();
+        }
+      });
+    }
   }
 
   Map<String, dynamic> toJson() {
@@ -275,6 +285,11 @@ class ProblemObject {
         'correctAnswerReferenceId': correctAnswerReferenceId,
       if (metaData != null)
         'metaData': metaData,
+      if (contextModifiers != null)
+        'contextModifiers': {
+          for (final entry in contextModifiers!.entries)
+            entry.key: entry.value.map((c) => c.toJson()).toList()
+        },
     };
   }
 }
@@ -282,9 +297,8 @@ class ProblemObject {
 /// Class representing page data for StuddyWidget
 class PageData {
   final List<Map<String, dynamic>> problems;
-  final String? targetLocale;
 
-  PageData({required this.problems, this.targetLocale}) {
+  PageData({required this.problems}) {
     // Basic validation
     if (problems.isEmpty) {
       throw WidgetDataException('problems list cannot be empty');
@@ -313,7 +327,6 @@ class PageData {
         // It's a list of problems directly
         return PageData(
           problems: List<Map<String, dynamic>>.from(parsed),
-          targetLocale: null,
         );
       } else if (parsed is Map<String, dynamic>) {
         // It's a complete PageData object
@@ -328,7 +341,6 @@ class PageData {
         
         return PageData(
           problems: List<Map<String, dynamic>>.from(problemsList),
-          targetLocale: parsed['targetLocale'] as String?,
         );
       } else {
         throw WidgetDataException('Invalid JSON format');
@@ -342,7 +354,6 @@ class PageData {
   Map<String, dynamic> toJson() {
     return {
       'problems': problems,
-      if (targetLocale != null) 'targetLocale': targetLocale,
     };
   }
 } 
