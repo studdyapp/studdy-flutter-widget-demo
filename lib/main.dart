@@ -146,7 +146,6 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
         ]
       }
     ]));
-    final localeController = TextEditingController(text: 'en-US');
 
     showDialog(
       context: context,
@@ -161,10 +160,6 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
                   controller: problemJsonController,
                   decoration: const InputDecoration(labelText: 'Problems JSON'),
                   maxLines: 10,
-                ),
-                TextField(
-                  controller: localeController,
-                  decoration: const InputDecoration(labelText: 'Target Locale'),
                 ),
               ],
             ),
@@ -188,12 +183,6 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
                   try {
                     // Use the helper method to parse and validate JSON
                     pageData = PageData.fromJsonString(jsonData);
-                    
-                    if (localeController.text.isNotEmpty) {
-                      pageData = PageData(
-                        problems: pageData.problems,
-                      );
-                    }
                   } catch (e) {
                     // Show validation error
                     throw WidgetDataException('Invalid JSON format: ${e.toString()}');
@@ -207,6 +196,61 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
                 } catch (e) {
                   log('Error setting page data: $e');
                   // Show error to the user
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _setTargetLocale() {
+    final localeController = TextEditingController(text: 'en-US');
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Set Target Locale'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: localeController,
+                  decoration: const InputDecoration(labelText: 'Target Locale'),
+                ),
+              ],
+            ),
+          ),
+          actionsAlignment: MainAxisAlignment.start,
+          actions: [
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            ElevatedButton(
+              child: const Text('Set Locale'),
+              onPressed: () {
+                try {
+                  final locale = localeController.text;
+                  if (locale.isEmpty) {
+                    throw WidgetDataException('Locale cannot be empty');
+                  }
+                  
+                  final response = StuddyWidget.setTargetLocale(locale);
+                  log('Target locale set successfully: $locale');
+                  log('Response: ${json.encode(response)}');
+                  Navigator.of(context).pop();
+                } catch (e) {
+                  log('Error setting target locale: $e');
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Error: $e'),
@@ -310,6 +354,11 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
                         onPressed: _setPageData,
                         child: const Text('Set Page Data'),
                         style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
+                      ),
+                      ElevatedButton(
+                        onPressed: _setTargetLocale,
+                        child: const Text('Set Locale'),
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, foregroundColor: Colors.white),
                       ),
                       const SizedBox(height: 8),
                       ElevatedButton(
