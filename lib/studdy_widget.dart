@@ -141,17 +141,17 @@ class StuddyWidget extends StatefulWidget {
   
   /// Set the widget position (left or right)
   static Map<String, dynamic> setWidgetPosition(String position) {
-    return _controller.setWidgetPosition(position);
+    return activeController.setWidgetPosition(position);
   }
   
   /// Set the widget z-index
   static Map<String, dynamic> setZIndex(int zIndex) {
-    return _controller.setZIndex(zIndex);
+    return activeController.setZIndex(zIndex);
   }
   
   /// Set the target locale
   static Map<String, dynamic> setTargetLocale(String locale) {
-    return _controller.setTargetLocale(locale);
+    return activeController.setTargetLocale(locale);
   }
   
   // Create a way to authenticate with custom controllers
