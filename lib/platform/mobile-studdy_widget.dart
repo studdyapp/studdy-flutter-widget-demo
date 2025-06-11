@@ -1,6 +1,7 @@
 //Not to be tampered with
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'dart:convert';
 import 'dart:async';
 import '../utils/widget_models.dart';
@@ -214,7 +215,11 @@ class _StuddyWidgetState extends State<StuddyWidget> {
 
   
   Future<void> _initializeWebView() async {
-    _webViewController = WebViewController()
+    // Use proper WebKit configuration for iOS inspection
+    final params = WebKitWebViewControllerCreationParams(
+      allowsInlineMediaPlayback: true,
+    );
+    _webViewController = WebViewController.fromPlatformCreationParams(params)
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.transparent)
       
@@ -311,6 +316,12 @@ class _StuddyWidgetState extends State<StuddyWidget> {
           },
         ),
       );
+    
+    // Enable Web Inspector for iOS
+    final platform = _webViewController.platform;
+    if (platform is WebKitWebViewController) {
+      platform.setInspectable(true);
+    }
     
     _webViewController.loadRequest(Uri.parse(widget.controller._widgetUrl));
   }

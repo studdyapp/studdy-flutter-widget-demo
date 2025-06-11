@@ -2,8 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'dart:convert';
-import 'package:webview_flutter_web/webview_flutter_web.dart';
 import 'dart:async';
 import '../utils/widget_models.dart';
 import '../utils/widget_constants.dart';

@@ -3,37 +3,22 @@
 
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'dart:developer';
 import 'studdy_widget.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_flutter_android/webview_flutter_android.dart';
-import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:webview_flutter_web/webview_flutter_web.dart'
     if (dart.library.io) 'platform/stub_web_package.dart';
 
 // EXAMPLE IMPLEMENTAION OF HOW ONE SPECIFIES A CUSTOM WIDGET URL
-const STUDDY_WIDGET_URL = 'https://widget.studdy.ai';
+const STUDDY_WIDGET_URL = 'https://widget.dev.studdy.ai';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Platform-specific WebView initialization
+  // Web platform initialization only
   if (kIsWeb) {
-    // Web platform initialization
     WebViewPlatform.instance = WebWebViewPlatform();
-  } else {
-    // Mobile platform initialization
-    late final PlatformWebViewControllerCreationParams params;
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      params = AndroidWebViewControllerCreationParams();
-    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-      params = WebKitWebViewControllerCreationParams();
-    } else {
-      params = const PlatformWebViewControllerCreationParams();
-    }
-    WebViewController.fromPlatformCreationParams(params);
   }
   
   runApp(const MainApp());
@@ -134,18 +119,121 @@ class _StuddyWidgetControlPanelState extends State<StuddyWidgetControlPanel> {
   }
 
   void _setPageData() {
-    final problemJsonController = TextEditingController(text: jsonEncode([
+    final problemJsonController = TextEditingController(
+      text: jsonEncode([
       {
-        'problemId': 'prob-123',
-        'referenceTitle': 'Algebra Problem',
-        'problemStatement': [
-          {
-            'text': 'Solve for x: 2x + 3 = 7',
-            'type': 'text'
-          }
-        ]
-      }
-    ]));
+          "problemId": "da31c501-a71d-48d5-8035-b7db11c1a9bc",
+          "referenceTitle": "Calculate math simple math",
+          "problemStatement": [
+            {"type": "text", "text": "3 + 7 + 5 + 2 + 4 + 1 + 6 ="},
+          ],
+          "solutionOptions": [
+            {
+              "label": "0",
+              "contents": [
+                {"type": "text", "text": "28"},
+              ],
+            },
+            {
+              "label": "1",
+              "contents": [
+                {"type": "text", "text": "29"},
+              ],
+            },
+            {
+              "label": "2",
+              "contents": [
+                {"type": "text", "text": "30"},
+              ],
+            },
+            {
+              "label": "3",
+              "contents": [
+                {"type": "text", "text": "27"},
+              ],
+            },
+          ],
+          "contextModifiers": {
+            "solution": [
+              {
+                "type": "text",
+                "text":
+                    "{\"scoring_type\": \"exactMatch\", \"valid_response\": {\"score\": 1, \"value\": []}}",
+              },
+            ],
+            "solutionSteps": [
+              {
+                "type": "text",
+                "text":
+                    "<strong>This is Instruction: Just plus it</strong>\n3 + 7 + 5 + 2 + 4 + 1 + 6 =<br>\n10 + 5 + 2 +4 + 1 +6 =<br>\n15 + 2 + 4 + 1 +6 =<br>\n17 + 4 + 1 +6 =<br>\n21 + 1 + 6 =<br>\n22 +6 =<br>\n28",
+              },
+            ],
+          },
+        },
+        {
+          "problemId": "85027d5a-625e-4182-ace8-289cd12c53af",
+          "referenceTitle": "Calculate math simple math",
+          "problemStatement": [
+            {"type": "text", "text": "What is capital of VietNam?"},
+          ],
+          "solutionOptions": [
+            {
+              "label": "0",
+              "contents": [
+                {"type": "text", "text": "Ho Chi Minh"},
+              ],
+            },
+            {
+              "label": "1",
+              "contents": [
+                {"type": "text", "text": "Da Nang"},
+              ],
+            },
+            {
+              "label": "2",
+              "contents": [
+                {"type": "text", "text": "Ha Noi"},
+              ],
+            },
+          ],
+          "contextModifiers": {
+            "solution": [
+              {
+                "type": "text",
+                "text":
+                    "{\"scoring_type\": \"exactMatch\", \"valid_response\": {\"score\": 1, \"value\": []}}",
+              },
+            ],
+            "solutionSteps": [
+              {"type": "text", "text": ""},
+            ],
+          },
+        },
+        {
+          "problemId": "df84706e-6e1d-4885-9709-815a4ef485d0",
+          "referenceTitle": "Calculate math simple math",
+          "problemStatement": [
+            {
+              "type": "text",
+              "text":
+                  "Calculate multiple math\n3 + 3 =blank<br>\n3 * 3 =blank<br>\n3 / 3 =blank",
+            },
+          ],
+          "contextModifiers": {
+            "solution": [
+              {
+                "type": "text",
+                "text":
+                    "{\"scoring_type\": \"exactMatch\", \"valid_response\": {\"score\": 1, \"value\": [6, 9, 1]}, \"enable_fullwidth_scoring\": true}",
+              },
+            ],
+            "solutionSteps": [
+              {"type": "text", "text": ""},
+            ],
+          },
+        },
+      ]),
+    );
 
     showDialog(
       context: context,
